@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const mongoose = require("mongoose");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -11,7 +11,6 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -20,58 +19,106 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
-// app.use(express.urlencoded({ extended: true }));
+// MongoDB Connection with Mongoose
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
 
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
+mongoose
+  .connect(uri,)
+  .then(() => {
+    console.log("Successfully connected to MongoDB via Mongoose!");
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+  });
+
+// Schema Definitions
+
+// Gig Schema
+const gigSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: { type: String, required: true },
+  price: { type: Number, required: true },
+  category: { type: String, required: true },
+  // Reference to the User model
 });
 
-async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+// User Schema
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  photoURL: { type: String, required: true },
+  password: { type: String, required: true },
+  role: { type: String, required: true },
+});
 
-    const gigCollection = client.db("prolance").collection("gigs");
-    const usersCollection = client.db("prolance").collection("users");
+// Models
+const Gig = mongoose.model("gig", gigSchema);
+const User = mongoose.model("users", userSchema);
 
-// data import from the users collection for showing gig UI
-    app.get("/showgig", async (req, res) => {
-      const cursor = gigCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.post("/creategigs", async (req, res) => {
-      const user = req.body;
-      console.log("new GIG", user);
-      const result = await gigCollection.insertOne(user);
-      res.send(result);
-    });
-
-  
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+// Routes
+// user section 
+app.get("/users", async (req, res) => {
+  const users = await User.find()
+  res.send(users)
+})
+app.post("/users", async (req, res) => {
+  const { name, email, password, photoURL, role } = req.body;
+  const query = { email: email };
+  const ExistingUser = await User.findOne(query);
+  if (ExistingUser) {
+    return res.send({ message: "user is already exist", insertedId: null });
+  } else {
+    try {
+      const user = new User({
+        name,
+        email, password, photoURL, role
+      })
+      const result = await user.save()
+      res.send(result)
+    } catch (error) {
+      console.log(error);
+      res.status(500).send({ message: "Error creating user" });
+    }
   }
-}
-// run().catch(console.dir);
+})
 
-app.get("/", (req, res) => {
-  res.send("ProLance is running");
+// Fetch all gigs
+app.get("/showgig", async (req, res) => {
+  try {
+    const gigs = await Gig.find()
+    // console.log(gigs);
+    res.send(gigs);
+  } catch (error) {
+    console.error("Error fetching gigs:", error);
+    res.status(500).send({ message: "Error fetching gigs" });
+  }
 });
 
+// Create a new gig
+app.post("/creategigs", async (req, res) => {
+  try {
+    const { title, description, price, category } = req.body;
+    const gig = new Gig({
+      title,
+      description,
+      price,
+      category,
+
+    });
+    const result = await gig.save();
+    res.send(result);
+  } catch (error) {
+    console.error("Error creating gig:", error);
+    res.status(500).send({ message: "Error creating gig" });
+  }
+});
+
+// Basic health check route
+app.get("/", (req, res) => {
+  res.send("ProLance is running ");
+});
+
+// Start the server
 app.listen(port, () => {
   console.log(`ProLance is running on port: ${port}`);
 });
