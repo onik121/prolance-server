@@ -37,10 +37,12 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const gigCollection = client.db("prolance").collection("gigs");
     const usersCollection = client.db("prolance").collection("users");
+
 // data import from the users collection for showing gig UI
     app.get("/showgig", async (req, res) => {
-      const cursor = usersCollection.find();
+      const cursor = gigCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -48,18 +50,11 @@ async function run() {
     app.post("/creategigs", async (req, res) => {
       const user = req.body;
       console.log("new GIG", user);
-      const result = await usersCollection.insertOne(user);
+      const result = await gigCollection.insertOne(user);
       res.send(result);
     });
 
-    // app.delete('/users/:id', async(req, res) => {
-    // const id = req.params.id;
-    // console.log('delete user', id);
-    // const query = {_id: new ObjectId(id)}
-    // const result = await userCollection.deleteOne(query);
-    // res.send(result);
-
-    // })
+  
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
@@ -71,7 +66,7 @@ async function run() {
     // await client.close();
   }
 }
-run().catch(console.dir);
+// run().catch(console.dir);
 
 app.get("/", (req, res) => {
   res.send("ProLance is running");
