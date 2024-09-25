@@ -15,8 +15,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB Connection with Mongoose
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
-
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
 mongoose.connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB via Mongoose!");
@@ -138,8 +138,10 @@ app.get("/showgig/:email", async (req, res) => {
     res.status(500).send({ message: "Error finding user" });
   }
 });
+
+
 // Create a new gig
-app.post("/creategigs", async (req, res) => {
+app.post("/creategigs", verifyToken, async (req, res) => {
   try {
     const { gig_title, gig_description, max_price, min_price, category, subcategory, gig_image, seller_email } = req.body;
     const gig = new Gig({
@@ -159,6 +161,18 @@ app.post("/creategigs", async (req, res) => {
     res.status(500).send({ message: "Error creating gig" });
   }
 });
+// delete a gig 
+app.delete('/gigs/:id',async(req,res)=>{
+    const id = req.params.id;
+    try {
+      const result = await Gig.findByIdAndDelete(id)
+      res.send(result)
+      
+    } catch (error) {
+      console.error("Error creating gig:", error);
+      res.status(500).send({ message: "Error delete gig" });
+    }
+})
 
 // Basic health check route
 app.get("/", (req, res) => {
