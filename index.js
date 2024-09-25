@@ -44,7 +44,7 @@ const gigSchema = new mongoose.Schema({
 
 // User Schema
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
+  displayName: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photoURL: { type: String, required: true },
   password: { type: String, required: true },
@@ -61,8 +61,20 @@ app.get("/users", async (req, res) => {
   const users = await User.find()
   res.send(users)
 })
+app.get("/users/:email",async(req,res)=>{
+  const email = req.params.email
+  
+  const query = {email : email}
+  try {
+    const result = await User.findOne(query)
+    res.send(result)
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error find  user" });
+  }
+})
 app.post("/users", async (req, res) => {
-  const { name, email, password, photoURL, role } = req.body;
+  const { displayName, email, password, photoURL, role } = req.body;
   const query = { email: email };
   const ExistingUser = await User.findOne(query);
   if (ExistingUser) {
@@ -70,7 +82,7 @@ app.post("/users", async (req, res) => {
   } else {
     try {
       const user = new User({
-        name,
+        displayName,
         email, password, photoURL, role
       })
       const result = await user.save()
