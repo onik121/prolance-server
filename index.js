@@ -17,8 +17,7 @@ app.use(express.json());
 // MongoDB Connection with Mongoose
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
 
-mongoose
-  .connect(uri)
+mongoose.connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB via Mongoose!");
   })
@@ -26,7 +25,7 @@ mongoose
     console.error("MongoDB connection error:", err);
   });
 
-// Schema Definitions
+
 // Gig Schema
 const gigSchema = new mongoose.Schema({
   gig_title: { type: String, required: true },
@@ -53,7 +52,7 @@ const userSchema = new mongoose.Schema({
 const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 
-// Routes
+
 
 // User section
 app.get("/users", async (req, res) => {
