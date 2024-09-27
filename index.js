@@ -36,7 +36,9 @@ const gigSchema = new mongoose.Schema({
   subcategory: { type: String, required: true },
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
-  created_at: { type: Date, default: Date.now }
+  created_at: { type: Date, default: Date.now },
+  seller_image: { type: String, required: true },
+  seller_name: { type: String, required: true },
 });
 
 // User Schema
@@ -116,7 +118,9 @@ app.post("/users", async (req, res) => {
 });
 
 // Fetch all gigs
+
 app.get("/showgig", async (req, res) => {
+  
   try {
     const gigs = await Gig.find();
     res.send(gigs);
@@ -141,9 +145,9 @@ app.get("/showgig/:email", async (req, res) => {
 
 
 // Create a new gig
-app.post("/creategigs", verifyToken, async (req, res) => {
+app.post("/creategigs",  async (req, res) => {
   try {
-    const { gig_title, gig_description, max_price, min_price, category, subcategory, gig_image, seller_email } = req.body;
+    const { gig_title, gig_description, max_price, min_price, category, subcategory, gig_image, seller_email,seller_image,seller_name } = req.body;
     const gig = new Gig({
       gig_title,
       gig_description,
@@ -153,6 +157,8 @@ app.post("/creategigs", verifyToken, async (req, res) => {
       subcategory,
       gig_image,
       seller_email,
+      seller_image,
+      seller_name
     });
     const result = await gig.save();
     res.send(result);
