@@ -21,9 +21,10 @@ app.use(express.json());
 // MongoDB Connection with Mongoose
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
-// mongoose.connect(uri)
 // add by juwel
  const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
+
+
 mongoose.connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB via Mongoose!");
@@ -43,6 +44,8 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
+  seller_image: { type: String, required: true },
+  seller_name: { type: String, required: true },
 });
 
 // User Schema
@@ -53,21 +56,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, required: true },
 });
-// post job  Schema by juwel
-// const postJobSchema = new mongoose.Schema({
-//   loggedInUserName: { type: String, required: true },
-//   loggedInUserEmail: { type: String, required: true, unique: true },
-//   pictureUrl: { type: String, required: true },
-//   jobTitle: { type: String, required: true },
-//   jobDescription: { type: String, required: true },
-//   jobCategory: { type: String, required: true },
-//   salaryRange: { type: Number, required: true },
-//   jobPostingDate: { type: Number, required: true },
-//   applicationDeadline: { type: Number, required: true },
-//   jobApplicantsNumber: { type: Number, required: true },
-// });
 
-// Job post  Schema
+
+// Job post  Schema add by juwel
 const postJobSchema = new mongoose.Schema({
   job_title: { type: String, required: true },
   job_description: { type: String, required: true },
@@ -152,7 +143,9 @@ app.post("/users", async (req, res) => {
 });
 
 // Fetch all gigs
+
 app.get("/showgig", async (req, res) => {
+  
   try {
     const gigs = await Gig.find();
     res.send(gigs);
@@ -197,6 +190,8 @@ app.post("/creategigs",  async (req, res) => {
       subcategory,
       gig_image,
       seller_email,
+      seller_image,
+      seller_name
     });
     const result = await gig.save();
     res.send(result);
