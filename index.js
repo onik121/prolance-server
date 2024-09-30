@@ -11,6 +11,7 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
+    "https://reliable-quokka-894072.netlify.app"
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -19,8 +20,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB Connection with Mongoose
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
-// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
+
+ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
 mongoose
   .connect(uri)
   .then(() => {
@@ -124,17 +125,51 @@ app.post("/users", async (req, res) => {
 });
 
 // Fetch all gigs
-
-app.get("/showgig", async (req, res) => {
-  
+app.get('/showgigs', async (req, res) => {
   try {
-    const gigs = await Gig.find();
-    res.send(gigs);
+    const { search,date,delivery,category,sortPrice } = req.query;
+
+   
+
+    // Create filter object for MongoDB query
+    let filter = {};
+
+    
+    if (search) {
+
+
+      filter.$or = [
+        
+        { gig_title: { $regex: search, $options: 'i' } },
+        { gig_description: { $regex: search, $options: 'i' } }
+      ];
+
+
+    }
+    if(category){
+      filter.category=category;
+    }
+    if (date) {
+      filter.created_at = { $gte: new Date(date) };
+    }
+    if (delivery) {
+      // Assuming you have a delivery field in your schema
+      filter.delivery_time = { $lte: parseInt(delivery) }; // adjust field name if necessary
+    }
+    let sort = {};
+    if (sortPrice) {
+      sort.min_price = sortPrice === "asc" ? 1 : -1;
+    }
+    // Query MongoDB with filter
+    const result = await Gig.find(filter).sort(sort)
+    //  console.log(properties);
+    res.json(result);
   } catch (error) {
-    console.error("Error fetching gigs:", error);
-    res.status(500).send({ message: "Error fetching gigs" });
+    res.status(500).send('Error fetching properties');
   }
 });
+
+
 
 // Fetch single gigs
 app.get("/showgig/:email", async (req, res) => {

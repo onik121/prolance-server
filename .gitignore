@@ -1,2 +1,4 @@
 node_Modules
 .env
+vercel.json
+.vercel
