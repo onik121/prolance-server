@@ -20,10 +20,13 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB Connection with Mongoose
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
+// add by juwel
+//  const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
 
- const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
-mongoose
-  .connect(uri)
+
+mongoose.connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB via Mongoose!");
   })
@@ -55,9 +58,25 @@ const userSchema = new mongoose.Schema({
   role: { type: String, required: true },
 });
 
+
+// Job post  Schema add by juwel
+const postJobSchema = new mongoose.Schema({
+  job_title: { type: String, required: true },
+  job_description: { type: String, required: true },
+  max_price: { type: Number, required: true },
+  min_price: { type: Number, required: true },
+  category: { type: String, required: true },
+  subcategory: { type: String, required: true },
+  job_image: { type: String, required: true },
+  seller_email: { type: String, required: true },
+  created_at: { type: Date, default: Date.now },
+  applicationDeadline: { type: Date, default: Date.now },
+});
+
 // Models
 const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
+const PostJob = mongoose.model("PostJob", postJobSchema);  // add by juwel 
 
 // Routes
 // jwt
@@ -184,19 +203,19 @@ app.get("/showgig/:email", async (req, res) => {
   }
 });
 
-app.get("/get-gig/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const result = await Gig.findById(id);
-    res.send(result);
-  } catch (error) {
-    console.log(error);
-  }
-});
 // Create a new gig
 app.post("/creategigs",  async (req, res) => {
   try {
-    const { gig_title, gig_description, max_price, min_price, category, subcategory, gig_image, seller_email,seller_image,seller_name } = req.body;
+    const {
+      gig_title,
+      gig_description,
+      max_price,
+      min_price,
+      category,
+      subcategory,
+      gig_image,
+      seller_email,
+    } = req.body;
     const gig = new Gig({
       gig_title,
       gig_description,
@@ -216,6 +235,7 @@ app.post("/creategigs",  async (req, res) => {
     res.status(500).send({ message: "Error creating gig" });
   }
 });
+
 // delete a gig
 app.delete("/gigs/:id", async (req, res) => {
   const id = req.params.id;
@@ -227,6 +247,104 @@ app.delete("/gigs/:id", async (req, res) => {
     res.status(500).send({ message: "Error delete gig" });
   }
 });
+
+
+
+// add by Juwel
+app.get("/showAllJob", async (req, res) => {
+  try {
+    const job = await PostJob.find();
+    res.send(job);
+  } catch (error) {
+    console.error("Error fetching job post data:", error);
+    res.status(500).send({ message: "Error fetching job data" });
+  }
+});
+
+// show job add by juwel
+app.get("/showJobUser/:email", async (req, res) => {
+  const email = req.params.email;
+  console.log(email);
+  const query = { seller_email: email };
+  console.log(query);
+  try {
+    const result = await PostJob.find(query);
+    res.send(result);
+    console.log(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error finding job post" });
+  }
+});
+
+
+// Post job add by Juwel
+
+
+app.post("/jobpost", async (req, res) => {
+  try {
+    const {
+      job_title,
+      job_description,
+      max_price,
+      min_price,
+      category,
+      subcategory,
+      job_image,
+      seller_email,
+      applicationDeadline,
+    } = req.body;
+    const post = new PostJob({
+      job_title,
+      job_description,
+      max_price,
+      min_price,
+      category,
+      subcategory,
+      job_image,
+      seller_email,
+      applicationDeadline,
+    });
+    const result = await post.save();
+    res.send(result);
+  } catch (error) {
+    console.error("Error creating job post:", error);
+    res.status(500).send({ message: "Error creating job post" });
+  }
+});
+
+
+// GET route for fetching job details by ID [add by juwel]
+app.get('/jobDetails/:id', async (req, res) => {
+  try {
+    // Use Job.findById to retrieve the job document
+    const job = await PostJob.findById(req.params.id);
+    
+    // Check if the job was found
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    
+    // If found, send the job document as the response
+    res.json(job);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// add by juwel
+app.delete("/job/:id", async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await PostJob.findByIdAndDelete(id);
+    res.send(result);
+  } catch (error) {
+    console.error("Error creating gig:", error);
+    res.status(500).send({ message: "Error delete gig" });
+  }
+});
+
 
 // Basic health check route
 app.get("/", (req, res) => {
