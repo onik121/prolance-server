@@ -1,82 +1,92 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const mongoose = require("mongoose"); // Added mongoose for MongoDB connection
+const { Server } = require("socket.io");
+const http = require("http");
+const Message = require("./models/Message"); // Import Message model
+const messageRoutes = require("./routes/messages"); // Import message routes
+
 const app = express();
 const port = process.env.PORT || 5000;
 
-// middleware
+// Middleware
 const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    
   ],
   credentials: true,
   optionSuccessStatus: 200,
 };
 app.use(cors(corsOptions));
-
 app.use(express.json());
 
-// app.use(express.urlencoded({ extended: true }));
-
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
-});
-
-async function run() {
+// MongoDB Connection using mongoose
+const connectDB = async () => {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-
-    const usersCollection = client.db("prolance").collection("users");
-// data import from the users collection for showing gig UI
-    app.get("/showgig", async (req, res) => {
-      const cursor = usersCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
+    await mongoose.connect(`mongodb+srv://myUser:${process.env.DB_PASS}@cluster0.0yjrwty.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority&appName=Cluster0`, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
     });
-
-    app.post("/creategigs", async (req, res) => {
-      const user = req.body;
-      console.log("new GIG", user);
-      const result = await usersCollection.insertOne(user);
-      res.send(result);
-    });
-
-    // app.delete('/users/:id', async(req, res) => {
-    // const id = req.params.id;
-    // console.log('delete user', id);
-    // const query = {_id: new ObjectId(id)}
-    // const result = await userCollection.deleteOne(query);
-    // res.send(result);
-
-    // })
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error.message);
+    process.exit(1); // Exit if DB connection fails
   }
-}
-run().catch(console.dir);
+};
+
+connectDB();
+
+// Routes
+app.use('/api/messages', messageRoutes); // Add message-related routes
 
 app.get("/", (req, res) => {
   res.send("ProLance is running");
 });
 
-app.listen(port, () => {
-  console.log(`ProLance is running on port: ${port}`);
+// Initialize HTTP server for Socket.io
+const server = http.createServer(app);
+
+// Initialize Socket.io
+const io = new Server(server, {
+  cors: {
+    origin: [
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://localhost:5175",
+      ],
+    // origin: 'http://localhost:3000', // Adjust to match frontend URL
+    methods: ['GET', 'POST'],
+  },
+});
+
+// Handle real-time messaging with Socket.io
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Receive message and save to DB
+  socket.on('sendMessage', async (data) => {
+    const { sender, receiver, message } = data;
+
+    try {
+      const newMessage = new Message({ sender, receiver, message });
+      await newMessage.save();
+
+      // Broadcast message to all clients
+      io.emit('receiveMessage', newMessage);
+    } catch (error) {
+      console.error('Error saving message:', error.message);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// Start server
+server.listen(port, () => {
+  console.log(`ProLance is running on http://localhost:${port}`);
 });
