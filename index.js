@@ -12,7 +12,9 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    "https://reliable-quokka-894072.netlify.app"
+    "https://idyllic-kataifi-59e714.netlify.app",
+    "https://prolance-e1eab.web.app",
+    "https://prolance-e1eab.firebaseapp.com"
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -55,8 +57,8 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photoURL: { type: String, required: true },
-  password: { type: String, required: true },
-  role: { type: String, required: true },
+  password: { type: String,  },
+  role: { type: String, },
 });
 
 // Job post  Schema add by juwel
@@ -164,11 +166,45 @@ app.post("/users", async (req, res) => {
 
 // Fetch all gigs
 
-app.get("/showgig", async (req, res) => {
-  
+app.get('/showgigs', async (req, res) => {
   try {
-    const gigs = await Gig.find();
-    res.send(gigs);
+    const { search,date,delivery,category,sortPrice } = req.query;
+
+   
+
+    // Create filter object for MongoDB query
+    let filter = {};
+
+    
+    if (search) {
+
+
+      filter.$or = [
+        
+        { gig_title: { $regex: search, $options: 'i' } },
+        { gig_description: { $regex: search, $options: 'i' } }
+      ];
+
+
+    }
+    if(category){
+      filter.category=category;
+    }
+    if (date) {
+      filter.created_at = { $gte: new Date(date) };
+    }
+    if (delivery) {
+      // Assuming you have a delivery field in your schema
+      filter.delivery_time = { $lte: parseInt(delivery) }; // adjust field name if necessary
+    }
+    let sort = {};
+    if (sortPrice) {
+      sort.min_price = sortPrice === "asc" ? 1 : -1;
+    }
+    // Query MongoDB with filter
+    const result = await Gig.find(filter).sort(sort)
+    //  console.log(properties);
+    res.json(result);
   } catch (error) {
     res.status(500).send('Error fetching properties');
   }
