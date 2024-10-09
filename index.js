@@ -23,7 +23,8 @@ app.use(express.json());
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
 // add by juwel
-const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
+// const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PAS}@cluster0.uftqkre.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 mongoose
   .connect(uri)
@@ -45,7 +46,7 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  seller_image: { type: String, required: true },
+  seller_image: { type: String, required: true  },
   seller_name: { type: String, required: true },
 });
 
@@ -197,7 +198,7 @@ app.post("/creategigs", async (req, res) => {
       category,
       subcategory,
       gig_image,
-      seller_email,
+      // seller_email,
     } = req.body;
     const gig = new Gig({
       gig_title,
