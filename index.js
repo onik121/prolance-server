@@ -127,6 +127,17 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
+app.delete("/userDelete/:id", verifyToken, async(req,res)=>{
+  const id = req.params.id;
+  try {
+    const result = await User.findByIdAndDelete(id)
+    res.send(result)
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error finding user" });
+    
+  }
+})
 app.get("/users/:email", async (req, res) => {
   const email = req.params.email;
 
@@ -237,6 +248,8 @@ app.post("/creategigs", async (req, res) => {
       subcategory,
       gig_image,
       seller_email,
+      seller_image,
+      seller_name  
     } = req.body;
     const gig = new Gig({
       gig_title,
@@ -261,6 +274,7 @@ app.post("/creategigs", async (req, res) => {
 // delete a gig
 app.delete("/gigs/:id", async (req, res) => {
   const id = req.params.id;
+  console.log(id)
   try {
     const result = await Gig.findByIdAndDelete(id);
     res.send(result);
