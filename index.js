@@ -3,9 +3,14 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const app = express();
-const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
-const {ObjectId } = require("mongodb")
+const { ObjectId } = require("mongodb"); // juwel
+//const http = require("http"); // juwel
+//const socketIo = require("socket.io"); // juwel
+//const { Server } = require('socket.io'); // add by juwel
+//const server = http.createServer(app); // add by juw
+//const io = new Server(server, { cors: { origin: '*' } }); // add by juwel
+const port = process.env.PORT || 5000;
 // middleware
 const corsOptions = {
   origin: [
@@ -90,11 +95,86 @@ const bitSchema = new mongoose.Schema({
   Buyer_email: { type: String, required: true },
 });
 
+// review rating schema add by juwel
+// const RatingSchema = new mongoose.Schema({
+//   freelancerId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     required: true,
+//     ref: "Freelancer",
+//   },
+//   clientId: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     required: true,
+//     ref: "Client",
+//   },
+//   rating: { type: Number, required: true, min: 1, max: 5 },
+//   review: { type: String, required: true },
+//   createdAt: { type: Date, default: Date.now },
+// });
+// Real time project tracking  add by juwel
+// const ProjectSchema = new mongoose.Schema(
+//   {
+//     title: String,
+//     description: String,
+//     status: {
+//       type: String,
+//       enum: ["pending", "in-progress", "completed"],
+//       default: "pending",
+//     },
+//     milestones: [
+//       {
+//         title: String,
+//         description: String,
+//         dueDate: Date,
+//         completed: {
+//           type: Boolean,
+//           default: false,
+//         },
+//       },
+//     ],
+//     freelancer: {
+//       type: mongoose.Schema.Types.ObjectId,
+//       ref: "User",
+//     },
+//     client: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+//     deadline: Date,
+//     files: [String], // File URLs or paths
+//   },
+//   { timestamps: true }
+// );
+
+// review and rating schema add by juwel
+const ratingSchema = new mongoose.Schema({
+  freelancerId: { type: String, required: false },
+  
+  clientId: { type: String, required: false },
+  rating: { type: Number, required: true, min: 1, max: 5 },
+  review: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+});
+
+// Define Project Schema
+// const projectSchema = new mongoose.Schema({
+//   title: String,
+//   description: String,
+//   status: String,
+//   deadline: Date,
+//   milestones: [
+//     {
+//       title: String,
+//       dueDate: Date,
+//       completed: Boolean,
+//     },
+//   ],
+// });
+
 // Models
 const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
+const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
+// const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
 // Routes
 // jwt
@@ -314,7 +394,7 @@ app.get("/jobDetails/:id", async (req, res) => {
 // add by juwel
 app.delete("/job/:id", async (req, res) => {
   const id = req.params.id;
-  console.log(id);
+  // console.log(id);
   try {
     const result = await PostJob.findByIdAndDelete(id);
     res.send(result);
@@ -402,32 +482,106 @@ app.get("/showBitUser/email/:email", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch bit" });
   }
 });
+// Fetch  bits by buyer's email (GET /bits/:email)
+app.get("/showBitBuyer/email/:email", async (req, res) => {
+  const buyerEmail = req.params.email;
+
+  try {
+    // Find a bit by seller's email
+    const bit = await Bit.find({
+      Buyer_email: buyerEmail,
+    });
+
+    // Check if the bit exists
+    if (!bit) {
+      return res.status(404).json({ error: "Bit not found" });
+    }
+
+    // Send the found bit as a JSON response
+    res.status(200).json(bit);
+  } catch (error) {
+    console.error("Error fetching bit:", error);
+    res.status(500).json({ error: "Failed to fetch bit" });
+  }
+});
 
 // Route to approve a bit (PATCH /bitUpdate/:id) add juwel
+// app.patch("/bitUpdate/:id", async (req, res) => {
+//   const { id } = req.params;
+//   const { action } = req.body;
+
+//   // Log the BitId and action to check values
+//   console.log("BitId:", id);
+//   console.log("Action:", action);
+
+//   // Validate the action
+//   if (!action || (action !== "approve" && action !== "reject")) {
+//     return res
+//       .status(400)
+//       .json({ error: 'Invalid action. Use "approve" or "reject".' });
+//   }
+
+//   try {
+//     const status = action === "approve" ? "Approved" : "Rejected";
+
+//     const updatedBit = await Bit.findByIdAndUpdate(
+//       // {BitId:new ObjectId(BitId)},
+//       // BitId.toString(),
+//       id,
+//       { status },
+//       { new: true }
+//     );
+//     console.log(updatedBit);
+//     if (!updatedBit) {
+//       return res.status(404).json({ error: "Bit not found" });
+//     }
+
+//     res.status(200).json(updatedBit);
+//   } catch (error) {
+//     console.error("Error updating bit status:", error);
+//     res.status(500).json({ error: "Failed to update bit status" });
+//   }
+// });
+
+
 app.patch("/bitUpdate/:id", async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
 
-  // Log the BitId and action to check values
-  console.log("BitId:", id);
-  console.log("Action:", action);
+  // Log the BitId and action to check values (Optional logging for debugging)
+  //console.log("BitId:", id);
+  //console.log("Action:", action);
 
-  // Validate the action
-  if (!action || (action !== "approve" && action !== "reject")) {
-    return res.status(400).json({ error: 'Invalid action. Use "approve" or "reject".' });
+  // Validate the action to allow "approve", "reject", or "progress"
+  if (!action || !["approve", "reject", "progress", "complete"].includes(action)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid action. Use "approve", "reject", "progress", or "complete".' });
+  }
+
+  // Check if id is a valid MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ error: "Invalid Bit ID" });
   }
 
   try {
-    const status = action === "approve" ? "Approved" : "Rejected";
+    // Map the action to the corresponding status
+    const status =
+      action === "approve"
+        ? "Approved"
+      :action === "complete"
+        ? "Completed"
+        : action === "reject"
+        ? "Rejected"
+        : "In Progress"; 
 
+    // Update the document's status based on the action
     const updatedBit = await Bit.findByIdAndUpdate(
-      // {BitId:new ObjectId(BitId)},
-      // BitId.toString(),
       id,
       { status },
       { new: true }
     );
-console.log(updatedBit)
+
     if (!updatedBit) {
       return res.status(404).json({ error: "Bit not found" });
     }
@@ -443,7 +597,6 @@ console.log(updatedBit)
 // add by juwel
 app.delete("/bit/:id", async (req, res) => {
   const id = req.params.id;
-  console.log(id);
   try {
     const result = await Bit.findByIdAndDelete(id);
     res.send(result);
@@ -452,6 +605,79 @@ app.delete("/bit/:id", async (req, res) => {
     res.status(500).send({ message: "Error delete gig" });
   }
 });
+
+// POST: Submit a new rating
+
+app.post("/reviewRating", async (req, res) => {
+  const { freelancerId, clientId, rating, review } = req.body;
+
+  try {
+    const newRating = new Rating({ freelancerId, clientId, rating, review });
+    await newRating.save();
+    res.status(201).json({ message: "Review submitted successfully!" });
+  } catch (error) {
+    res.status(500).json({ message: "Error submitting review", error });
+  }
+});
+
+// GET: Get all ratings for a freelancer
+app.get("/freelancers/:freelancerId/ratings", async (req, res) => {
+  const { freelancerId } = req.params;
+
+  try {
+    const ratings = await Rating.find({ freelancerId }).sort({ createdAt: -1 });
+    res.status(200).json(ratings);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching reviews", error });
+  }
+});
+
+// GET: Get average rating for a freelancer
+app.get("/average/:freelancerId", async (req, res) => {
+  try {
+    const ratings = await Rating.find({
+      freelancerId: req.params.freelancerId,
+    });
+    const average =
+      ratings.reduce((acc, rating) => acc + rating.rating, 0) / ratings.length;
+    res.status(200).json({ average: isNaN(average) ? 0 : average });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Get all projects
+// app.get('/api/projects', async (req, res) => {
+//   try {
+//     const projects = await Project.find();
+//     res.json(projects);
+//     // console.log(projects);
+//   } catch (error) {
+//     res.status(500).json({ error: 'Error fetching projects' });
+//   }
+// });
+
+// Update a project
+// app.put('/api/projects/:id', async (req, res) => {
+//   try {
+//     const updatedProject = await Project.findByIdAndUpdate(
+//       req.params.id,
+//       req.body,
+//       { new: true }
+//     );
+//     io.emit('updateProject', updatedProject); // Emit the update to all clients
+//     res.json(updatedProject);
+//   } catch (error) {res.status(500).json({ error: 'Error updating project' });
+// }
+// });
+// Socket.IO connection
+// io.on('connection', (socket) => {
+//   console.log('A user connected');
+
+//   socket.on('disconnect', () => {
+//     console.log('User disconnected');
+//   });
+// });
 
 // Basic health check route
 app.get("/", (req, res) => {
