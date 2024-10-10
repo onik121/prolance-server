@@ -13,7 +13,7 @@ const corsOptions = {
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    "https://idyllic-kataifi-59e714.netlify.app",
+    "https://statuesque-crisp-19f8fb.netlify.app",
     "https://prolance-e1eab.web.app",
     "https://prolance-e1eab.firebaseapp.com"
   ],
