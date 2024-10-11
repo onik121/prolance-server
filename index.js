@@ -5,20 +5,21 @@ const mongoose = require("mongoose");
 const app = express();
 const port = process.env.PORT || 5000;
 const jwt = require("jsonwebtoken");
-const {ObjectId } = require("mongodb")
+const { ObjectId } = require("mongodb");
+const req = require("express/lib/request");
 // middleware
 const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
     "http://localhost:5175",
-    "https://idyllic-kataifi-59e714.netlify.app",
+    "https://statuesque-crisp-19f8fb.netlify.app",
     "https://prolance-e1eab.web.app",
     "https://prolance-e1eab.firebaseapp.com"
   ],
   credentials: true,
   optionSuccessStatus: 200,
-};   
+};
 app.use(cors(corsOptions));
 app.use(express.json());
 
@@ -59,7 +60,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photoURL: { type: String, required: true },
-  password: { type: String,  },
+  password: { type: String, },
   role: { type: String, },
 });
 
@@ -129,6 +130,17 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
+app.delete("/userDelete/:id", verifyToken, async (req, res) => {
+  const id = req.params.id;
+  try {
+    const result = await User.findByIdAndDelete(id)
+    res.send(result)
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error finding user" });
+
+  }
+})
 app.get("/users/:email", async (req, res) => {
   const email = req.params.email;
 
@@ -141,7 +153,23 @@ app.get("/users/:email", async (req, res) => {
     res.status(500).send({ message: "Error finding user" });
   }
 });
-
+app.patch('/userEdit', async (req, res) => {
+  const { name, role, id } = req.body;
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { name, role },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ message: 'User updated successfully', updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error updating user', error });
+  }
+});
 app.post("/users", async (req, res) => {
   const { name, email, password, photoURL, role } = req.body;
   const query = { email: email };
@@ -170,27 +198,27 @@ app.post("/users", async (req, res) => {
 
 app.get('/showgigs', async (req, res) => {
   try {
-    const { search,date,delivery,category,sortPrice } = req.query;
+    const { search, date, delivery, category, sortPrice } = req.query;
 
-   
+
 
     // Create filter object for MongoDB query
     let filter = {};
 
-    
+
     if (search) {
 
 
       filter.$or = [
-        
+
         { gig_title: { $regex: search, $options: 'i' } },
         { gig_description: { $regex: search, $options: 'i' } }
       ];
 
 
     }
-    if(category){
-      filter.category=category;
+    if (category) {
+      filter.category = category;
     }
     if (date) {
       filter.created_at = { $gte: new Date(date) };
@@ -238,6 +266,8 @@ app.post("/creategigs", async (req, res) => {
       subcategory,
       gig_image,
       seller_email,
+      seller_image,
+      seller_name
     } = req.body;
     const gig = new Gig({
       gig_title,
@@ -262,6 +292,7 @@ app.post("/creategigs", async (req, res) => {
 // delete a gig
 app.delete("/gigs/:id", async (req, res) => {
   const id = req.params.id;
+  console.log(id)
   try {
     const result = await Gig.findByIdAndDelete(id);
     res.send(result);
@@ -467,7 +498,7 @@ app.patch("/bitUpdate/:id", async (req, res) => {
       { status },
       { new: true }
     );
-console.log(updatedBit)
+    console.log(updatedBit)
     if (!updatedBit) {
       return res.status(404).json({ error: "Bit not found" });
     }
