@@ -58,6 +58,7 @@ const gigSchema = new mongoose.Schema({
   seller_name: { type: String, required: true },
 });
 
+
 // User Schema
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -133,6 +134,7 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
+
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
@@ -536,3 +538,10 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`ProLance is running on port: ${port}`);
 });
+
+
+
+// const paymentSchema = new  mongoose.Schema( {
+//   name : { type : String , required : false   }
+
+// })
