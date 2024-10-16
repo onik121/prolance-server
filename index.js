@@ -4,13 +4,9 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const app = express();
 const jwt = require("jsonwebtoken");
-<<<<<<< HEAD
-const { ObjectId } = require("mongodb"); // juwel
-const port = process.env.PORT || 5001;
-=======
 const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
->>>>>>> 1abf824badeb1785616e1f24fbc9230261649c93
+const port = process.env.PORT || 5001;
 // middleware
 const corsOptions = {
   origin: [
@@ -639,11 +635,8 @@ app.patch("/bitUpdate/:id", async (req, res) => {
       { status },
       { new: true }
     );
-<<<<<<< HEAD
 
-=======
     console.log(updatedBit)
->>>>>>> 1abf824badeb1785616e1f24fbc9230261649c93
     if (!updatedBit) {
       return res.status(404).json({ error: "Bit not found" });
     }
