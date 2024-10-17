@@ -191,7 +191,7 @@ const skillSchema = new mongoose.Schema({
 
 const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // Freelancer's email
-  categories: [skillSchema],  // Array of categories and their skills
+  categories: [skillSchema],  // Array of categories and their skills   
 });
 
 // Models
