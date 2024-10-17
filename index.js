@@ -8,6 +8,7 @@ const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
 const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
 const port = process.env.PORT || 5000;
+
 // middleware
 const corsOptions = {
   origin: [
@@ -163,7 +164,6 @@ const bitSchema = new mongoose.Schema({
 // review and rating schema add by juwel
 const ratingSchema = new mongoose.Schema({
   freelancerId: { type: String, required: false },
-  
   clientId: { type: String, required: false },
   rating: { type: Number, required: true, min: 1, max: 5 },
   review: { type: String, required: true },
@@ -722,9 +722,6 @@ app.post("/payments", async (req, res) => {
   }
   
 });
-
-
-
 
 
 app.get("/payments", async (req, res) => {
