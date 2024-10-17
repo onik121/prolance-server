@@ -6,7 +6,7 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
-const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
+const stripe = require("stripe") 
 const port = process.env.PORT || 5000;
 // middleware
 const corsOptions = {
@@ -722,9 +722,6 @@ app.post("/payments", async (req, res) => {
   }
   
 });
-
-
-
 
 
 app.get("/payments", async (req, res) => {
