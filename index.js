@@ -6,9 +6,7 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
-const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
 const port = process.env.PORT || 5000;
-
 // middleware
 const corsOptions = {
   origin: [
@@ -63,6 +61,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photoURL: { type: String, required: true },
+  description:{type:String},
   password: { type: String, },
   role: { type: String, },
 });
@@ -207,7 +206,7 @@ const skillSchema = new mongoose.Schema({
 
 const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // Freelancer's email
-  categories: [skillSchema],  // Array of categories and their skills
+  categories: [skillSchema],  // Array of categories and their skills   
 });
 
 // Models
@@ -293,7 +292,23 @@ app.patch('/userEdit', async (req, res) => {
     res.status(500).json({ message: 'Error updating user', error });
   }
 });
-
+app.patch('/profileUpdate', async (req, res) => {
+  const { description, id } = req.body;
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { description:description },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ message: 'User updated successfully', updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error updating user', error });
+  }
+});
 app.post("/users", async (req, res) => {
   const { name, email, password, photoURL, role } = req.body;
   const query = { email: email };
@@ -309,7 +324,7 @@ app.post("/users", async (req, res) => {
         photoURL,
         role,
       });
-      const result = await user.save();
+      const result = await user.save(); 
       res.send(result);
     } catch (error) {
       console.log(error);
@@ -623,6 +638,7 @@ app.get("/showBitBuyer/email/:email", async (req, res) => {
 app.patch("/bitUpdate/:id", async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
+  console.log(action)
 
   // Log the BitId and action to check values (Optional logging for debugging)
   // Validate the action to allow "approve", "reject", or "progress"
