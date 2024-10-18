@@ -51,9 +51,10 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  seller_image: { type: String, required: true },
+  seller_image: { type: String, required: true  },
   seller_name: { type: String, required: true },
 });
+
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -64,6 +65,20 @@ const userSchema = new mongoose.Schema({
   password: { type: String, },
   role: { type: String, },
 });
+
+
+// paymentSchema by kamrul 
+
+const paymentSchema = new mongoose.Schema({
+  name: { type: String, required: false },
+  email: { type: String, required: false },
+  price : { type : Number , require  : false },
+  transactionId: { type: String, required: false  },
+  date : { type: Date, default: Date.now },
+
+
+})
+
 
 // Job post  Schema add by juwel
 const postJobSchema = new mongoose.Schema({
@@ -148,7 +163,6 @@ const bitSchema = new mongoose.Schema({
 // review and rating schema add by juwel
 const ratingSchema = new mongoose.Schema({
   freelancerId: { type: String, required: false },
-  
   clientId: { type: String, required: false },
   rating: { type: Number, required: true, min: 1, max: 5 },
   review: { type: String, required: true },
@@ -200,6 +214,8 @@ const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
+const Payment = mongoose.model( "Payment", paymentSchema )
+
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model('Category', categorySchema); // add by juwel
 const Qualification = mongoose.model('Qualification', qualificationSchema); // add by juwel
@@ -235,6 +251,7 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
+
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
@@ -307,7 +324,7 @@ app.post("/users", async (req, res) => {
         photoURL,
         role,
       });
-      const result = await user.save();
+      const result = await user.save(); 
       res.send(result);
     } catch (error) {
       console.log(error);
@@ -361,7 +378,6 @@ app.get('/showgigs', async (req, res) => {
     res.status(500).send('Error fetching properties');
   }
 });
-
 
 
 // Fetch single gigs
@@ -637,6 +653,8 @@ app.patch("/bitUpdate/:id", async (req, res) => {
     return res.status(400).json({ error: "Invalid Bit ID" });
   }
 
+
+
   try {
     // Map the action to the corresponding status
     const status =
@@ -667,7 +685,6 @@ app.patch("/bitUpdate/:id", async (req, res) => {
   }
 });
 
-
 // add by juwel
 app.delete("/bit/:id", async (req, res) => {
   const id = req.params.id;
@@ -680,6 +697,55 @@ app.delete("/bit/:id", async (req, res) => {
   }
 });
 
+//payment route by kamrul
+
+app.post('/create-payment-intent', async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price );
+  console.log(amount, 'amount inside the intent')
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: 'usd',
+    payment_method_types: ['card']
+  });
+
+  // console.log( {paymentIntent })
+  res.send({
+    clientSecret: paymentIntent.client_secret
+  })
+});
+
+  
+app.post("/payments", async (req, res) => {
+  const { name, email ,price , transactionId , date  } = req.body;
+  console.log( name , email )
+
+  try {
+    const payment = new Payment ({
+      name,
+      email,
+      price, 
+      transactionId,
+      date 
+     
+    });
+    const result = await payment.save();
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error creating user" });
+  }
+  
+});
+
+
+app.get("/payments", async (req, res) => {
+  const payments = await Payment.find();
+  res.send(payments);
+});
+
+// Basic health check route
 // POST: Submit a new rating
 
 app.post("/reviewRating", async (req, res) => {
@@ -911,3 +977,6 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`ProLance is running on port: ${port}`);
 });
+
+
+
