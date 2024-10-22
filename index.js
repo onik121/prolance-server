@@ -52,9 +52,10 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  seller_image: { type: String, required: true },
+  seller_image: { type: String, required: true  },
   seller_name: { type: String, required: true },
 });
+
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -63,6 +64,9 @@ const userSchema = new mongoose.Schema({
   photoURL: { type: String, required: true },
   password: { type: String },
   role: { type: String },
+  description:{type:String},
+  password: { type: String, },
+  role: { type: String, },
 });
 // New user nested schema
 
@@ -160,6 +164,20 @@ const usersSchema = new Schema(
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt fields
 );
+
+
+
+// paymentSchema by kamrul 
+
+const paymentSchema = new mongoose.Schema({
+  name: { type: String, required: false },
+  email: { type: String, required: false },
+  price : { type : Number , require  : false },
+  transactionId: { type: String, required: false  },
+  date : { type: Date, default: Date.now },
+
+
+})
 
 
 // Job post  Schema add by juwel
@@ -291,6 +309,7 @@ const skillSchema = new mongoose.Schema({
 const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // Freelancer's email
   categories: [skillSchema], // Array of categories and their skills
+  categories: [skillSchema],  // Array of categories and their skills   
 });
 
 //  Mongoose model
@@ -298,6 +317,8 @@ const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
+const Payment = mongoose.model( "Payment", paymentSchema )
+
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
 const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
@@ -337,6 +358,7 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
+
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
@@ -376,6 +398,23 @@ app.patch("/userEdit", async (req, res) => {
     res.status(500).json({ message: "Error updating user", error });
   }
 });
+app.patch('/profileUpdate', async (req, res) => {
+  const { description, id } = req.body;
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { description:description },
+      { new: true }
+    );
+    if (!updatedUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.status(200).json({ message: 'User updated successfully', updatedUser });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error updating user', error });
+  }
+});
 app.post("/users", async (req, res) => {
   const { name, email, password, photoURL, role } = req.body;
   const query = { email: email };
@@ -391,7 +430,7 @@ app.post("/users", async (req, res) => {
         photoURL,
         role,
       });
-      const result = await user.save();
+      const result = await user.save(); 
       res.send(result);
     } catch (error) {
       console.log(error);
@@ -452,6 +491,7 @@ app.get("/showgigs", async (req, res) => {
 //     res.status(500).send({ message: "Error fetching gigs data" });
 //   }
 // });
+
 // Fetch single gigs
 app.get("/showgig/:email", async (req, res) => {
   const email = req.params.email;
@@ -710,6 +750,7 @@ app.get("/showBitBuyer/email/:email", async (req, res) => {
 app.patch("/bitUpdate/:id", async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
+  console.log(action)
 
   // Log the BitId and action to check values (Optional logging for debugging)
   // Validate the action to allow "approve", "reject", or "progress"
@@ -727,6 +768,8 @@ app.patch("/bitUpdate/:id", async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: "Invalid Bit ID" });
   }
+
+
 
   try {
     // Map the action to the corresponding status
@@ -770,6 +813,55 @@ app.delete("/bit/:id", async (req, res) => {
   }
 });
 
+//payment route by kamrul
+
+app.post('/create-payment-intent', async (req, res) => {
+  const { price } = req.body;
+  const amount = parseInt(price );
+  console.log(amount, 'amount inside the intent')
+
+  const paymentIntent = await stripe.paymentIntents.create({
+    amount: amount,
+    currency: 'usd',
+    payment_method_types: ['card']
+  });
+
+  // console.log( {paymentIntent })
+  res.send({
+    clientSecret: paymentIntent.client_secret
+  })
+});
+
+  
+app.post("/payments", async (req, res) => {
+  const { name, email ,price , transactionId , date  } = req.body;
+  console.log( name , email )
+
+  try {
+    const payment = new Payment ({
+      name,
+      email,
+      price, 
+      transactionId,
+      date 
+     
+    });
+    const result = await payment.save();
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error creating user" });
+  }
+  
+});
+
+
+app.get("/payments", async (req, res) => {
+  const payments = await Payment.find();
+  res.send(payments);
+});
+
+// Basic health check route
 // POST: Submit a new rating
 
 app.post("/reviewRating", async (req, res) => {
@@ -1151,3 +1243,6 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`ProLance is running on port: ${port}`);
 });
+
+
+
