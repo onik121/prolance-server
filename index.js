@@ -294,7 +294,7 @@ app.patch('/userEdit', async (req, res) => {
 });
 app.patch('/profileUpdate', async (req, res) => {
   const { description, id } = req.body;
-  try {
+  try { 
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { description:description },
