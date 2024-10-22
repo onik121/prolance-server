@@ -6,7 +6,9 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
-const port = process.env.PORT || 5001;
+const bcrypt = require("bcrypt");
+const { Schema } = mongoose;
+const port = process.env.PORT || 5000;
 // middleware
 const corsOptions = {
   origin: [
@@ -17,8 +19,7 @@ const corsOptions = {
     "https://prolance-e1eab.web.app",
     "https://prolance-e1eab.firebaseapp.com",
     "https://prolance-482df.web.app",
-    "https://prolance-482df.firebaseapp.com"
-    
+    "https://prolance-482df.firebaseapp.com",
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -30,7 +31,7 @@ app.use(express.json());
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@jahid12.81vfswo.mongodb.net/prolance?retryWrites=true&w=majority&appName=jahid12`;
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@atlascluster.6gwdl3v.mongodb.net/prolance?retryWrites=true&w=majority&appName=AtlasCluster`;
 // add by juwel
-  const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
 
 mongoose.connect(uri)
   .then(() => {
@@ -60,9 +61,106 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   photoURL: { type: String, required: true },
-  password: { type: String, },
-  role: { type: String, },
+  password: { type: String },
+  role: { type: String },
 });
+// New user nested schema
+
+const newUserSchema = new mongoose.Schema({
+  userInfo: [
+    {
+      name: { type: String, required: true },
+      email: { type: String, required: true, unique: true },
+      photoURL: { type: String, required: true },
+      password: { type: String, required: true },
+      role: { type: String, required: true },
+    },
+  ],
+
+  rating: [
+    {
+      freelancerId: { type: String, required: false },
+
+      clientId: { type: String, required: false },
+      rating: { type: Number, required: true, min: 1, max: 5 },
+      review: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+    },
+  ],
+  skills: [
+    {
+      category: { type: String, required: true }, // Category name
+      skills: [{ type: String, required: true }], // List of skills under the category
+    },
+  ],
+  qualifications: [
+    {
+      education: { type: String, required: true },
+      level: { type: String, required: true },
+      schoolName: { type: String, required: true },
+    },
+  ],
+});
+
+// check purpose 
+// Rating Schema
+const ratingsSchema = new Schema({
+  averageRating: { type: Number, required: true },
+  reviewsCount: { type: Number, required: true },
+  individualRatings: [
+    {
+      rating: { type: Number, required: true },
+      review: { type: String },
+      reviewer: { type: Schema.Types.ObjectId, ref: 'Users' }, // Reference to reviewer (another user)
+    }
+  ]
+});
+
+// Skill Schema
+const skillsSchema = new Schema({
+  name: { type: String, required: true },
+  proficiency: { type: String,  required: true },
+});
+
+// Qualification Schema
+const qualificationsSchema = new Schema({
+  title: { type: String, required: true },
+  institution: { type: String, required: true },
+  year: { type: Number, required: true },
+});
+
+// Education Schema
+const educationsSchema = new Schema({
+  degree: { type: String, required: true },
+  institution: { type: String, required: true },
+  yearOfGraduation: { type: Number, required: true },
+});
+
+// Language Schema
+const languagesSchema = new Schema({
+  language: { type: String, required: true },
+  proficiency: { type: String, enum: ['Basic', 'Conversational', 'Fluent', 'Native'], required: true },
+});
+
+// Main Users Schema
+const usersSchema = new Schema(
+  {
+    name: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    photoURL: { type: String, required: true }, // Profile picture URL
+    role: { type: String, default: 'user' }, // User role, default is 'user'
+    
+    // Nested Schemas
+    ratings: ratingsSchema, // Embeds rating schema
+    skills: [skillsSchema], // Array of skills
+    qualifications: [qualificationsSchema], // Array of qualifications
+    education: [educationsSchema], // Array of education
+    languages: [languagesSchema], // Array of languages
+  },
+  { timestamps: true } // Automatically adds createdAt and updatedAt fields
+);
+
 
 // Job post  Schema add by juwel
 const postJobSchema = new mongoose.Schema({
@@ -112,6 +210,7 @@ const bitSchema = new mongoose.Schema({
 //   review: { type: String, required: true },
 //   createdAt: { type: Date, default: Date.now },
 // });
+
 // Real time project tracking  add by juwel
 // const ProjectSchema = new mongoose.Schema(
 //   {
@@ -147,7 +246,7 @@ const bitSchema = new mongoose.Schema({
 // review and rating schema add by juwel
 const ratingSchema = new mongoose.Schema({
   freelancerId: { type: String, required: false },
-  
+
   clientId: { type: String, required: false },
   rating: { type: Number, required: true, min: 1, max: 5 },
   review: { type: String, required: true },
@@ -169,7 +268,7 @@ const categorySchema = new mongoose.Schema({
 const educationSchema = new mongoose.Schema({
   education: { type: String, required: true },
   level: { type: String, required: true },
-  schoolName: { type: String, required: true }
+  schoolName: { type: String, required: true },
 });
 // Define the User schema with an array of education entries
 const qualificationSchema = new mongoose.Schema({
@@ -186,24 +285,28 @@ const languageSchema = new mongoose.Schema({
 // Freelancer skills Schema add by juwel
 const skillSchema = new mongoose.Schema({
   category: { type: String, required: true }, // Category name
-  skills: [{ type: String, required: true }],  // List of skills under the category
+  skills: [{ type: String, required: true }], // List of skills under the category
 });
 
 const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // Freelancer's email
-  categories: [skillSchema],  // Array of categories and their skills
+  categories: [skillSchema], // Array of categories and their skills
 });
 
-// Models
+//  Mongoose model
 const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
-const Category = mongoose.model('Category', categorySchema); // add by juwel
-const Qualification = mongoose.model('Qualification', qualificationSchema); // add by juwel
-const Language = mongoose.model('Language', languageSchema); // add by juwel
-const Freelancer = mongoose.model('Freelancer', freelancerSchema); // add by juwel
+const Category = mongoose.model("Category", categorySchema); // add by juwel
+const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
+const Language = mongoose.model("Language", languageSchema); // add by juwel
+const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
+const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
+ 
+const Users = mongoose.model('Users', usersSchema);// Creating juwel
+
 // const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
 // Routes
@@ -237,14 +340,13 @@ app.get("/users", async (req, res) => {
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
-    const result = await User.findByIdAndDelete(id)
-    res.send(result)
+    const result = await User.findByIdAndDelete(id);
+    res.send(result);
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: "Error finding user" });
-
   }
-})
+});
 app.get("/users/:email", async (req, res) => {
   const email = req.params.email;
 
@@ -257,7 +359,7 @@ app.get("/users/:email", async (req, res) => {
     res.status(500).send({ message: "Error finding user" });
   }
 });
-app.patch('/userEdit', async (req, res) => {
+app.patch("/userEdit", async (req, res) => {
   const { name, role, id } = req.body;
   try {
     const updatedUser = await User.findByIdAndUpdate(
@@ -266,12 +368,12 @@ app.patch('/userEdit', async (req, res) => {
       { new: true }
     );
     if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
-    res.status(200).json({ message: 'User updated successfully', updatedUser });
+    res.status(200).json({ message: "User updated successfully", updatedUser });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error updating user', error });
+    res.status(500).json({ message: "Error updating user", error });
   }
 });
 app.post("/users", async (req, res) => {
@@ -300,52 +402,56 @@ app.post("/users", async (req, res) => {
 
 // Fetch all gigs
 
-app.get('/showgigs', async (req, res) => {
+app.get("/showgigs", async (req, res) => {
   try {
     const { search, date, delivery, category, sortPrice } = req.query;
-
-
 
     // Create filter object for MongoDB query
     let filter = {};
 
-
     if (search) {
-
-
       filter.$or = [
-
-        { gig_title: { $regex: search, $options: 'i' } },
-        { gig_description: { $regex: search, $options: 'i' } }
+        { gig_title: { $regex: search, $options: "i" } },
+        { gig_description: { $regex: search, $options: "i" } },
       ];
-
-
     }
+
     if (category) {
-      filter.category = category;
+      filter.category = category; // This ensures category filtering works
     }
+
     if (date) {
       filter.created_at = { $gte: new Date(date) };
     }
+
     if (delivery) {
       // Assuming you have a delivery field in your schema
-      filter.delivery_time = { $lte: parseInt(delivery) }; // adjust field name if necessary
+      filter.delivery_time = { $lte: parseInt(delivery) }; // Adjust field name if necessary
     }
+
     let sort = {};
     if (sortPrice) {
       sort.min_price = sortPrice === "asc" ? 1 : -1;
     }
+
     // Query MongoDB with filter
-    const result = await Gig.find(filter).sort(sort)
-    //  console.log(properties);
+    const result = await Gig.find(filter).sort(sort);
     res.json(result);
   } catch (error) {
-    res.status(500).send('Error fetching properties');
+    res.status(500).send("Error fetching gigs");
   }
 });
 
-
-
+// add by Juwel
+// app.get("/showAllGigs", async (req, res) => {
+//   try {
+//     const gigs = await Gig.find();
+//     res.send(gigs);
+//   } catch (error) {
+//     console.error("Error fetching gigs show data:", error);
+//     res.status(500).send({ message: "Error fetching gigs data" });
+//   }
+// });
 // Fetch single gigs
 app.get("/showgig/:email", async (req, res) => {
   const email = req.params.email;
@@ -372,7 +478,7 @@ app.post("/creategigs", async (req, res) => {
       gig_image,
       seller_email,
       seller_image,
-      seller_name
+      seller_name,
     } = req.body;
     const gig = new Gig({
       gig_title,
@@ -397,7 +503,7 @@ app.post("/creategigs", async (req, res) => {
 // delete a gig
 app.delete("/gigs/:id", async (req, res) => {
   const id = req.params.id;
-  console.log(id)
+  console.log(id);
   try {
     const result = await Gig.findByIdAndDelete(id);
     res.send(result);
@@ -607,10 +713,14 @@ app.patch("/bitUpdate/:id", async (req, res) => {
 
   // Log the BitId and action to check values (Optional logging for debugging)
   // Validate the action to allow "approve", "reject", or "progress"
-  if (!action || !["approve", "reject", "progress", "complete"].includes(action)) {
-    return res
-      .status(400)
-      .json({ error: 'Invalid action. Use "approve", "reject", "progress", or "complete".' });
+  if (
+    !action ||
+    !["approve", "reject", "progress", "complete"].includes(action)
+  ) {
+    return res.status(400).json({
+      error:
+        'Invalid action. Use "approve", "reject", "progress", or "complete".',
+    });
   }
 
   // Check if id is a valid MongoDB ObjectId
@@ -623,11 +733,11 @@ app.patch("/bitUpdate/:id", async (req, res) => {
     const status =
       action === "approve"
         ? "Approved"
-      :action === "complete"
+        : action === "complete"
         ? "Completed"
         : action === "reject"
         ? "Rejected"
-        : "In Progress"; 
+        : "In Progress";
 
     // Update the document's status based on the action
     const updatedBit = await Bit.findByIdAndUpdate(
@@ -636,7 +746,7 @@ app.patch("/bitUpdate/:id", async (req, res) => {
       { new: true }
     );
 
-    console.log(updatedBit)
+    console.log(updatedBit);
     if (!updatedBit) {
       return res.status(404).json({ error: "Bit not found" });
     }
@@ -647,7 +757,6 @@ app.patch("/bitUpdate/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to update bit status" });
   }
 });
-
 
 // add by juwel
 app.delete("/bit/:id", async (req, res) => {
@@ -675,33 +784,7 @@ app.post("/reviewRating", async (req, res) => {
   }
 });
 
-// GET: Get all ratings for a freelancer
-app.get("/freelancers/:freelancerId/ratings", async (req, res) => {
-  const { freelancerId } = req.params;
-
-  try {
-    const ratings = await Rating.find({ freelancerId }).sort({ createdAt: -1 });
-    res.status(200).json(ratings);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching reviews", error });
-  }
-});
-
-// GET: Get average rating for a freelancer
-app.get("/average/:freelancerId", async (req, res) => {
-  try {
-    const ratings = await Rating.find({
-      freelancerId: req.params.freelancerId,
-    });
-    const average =
-      ratings.reduce((acc, rating) => acc + rating.rating, 0) / ratings.length;
-    res.status(200).json({ average: isNaN(average) ? 0 : average });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-app.get('/search', async (req, res) => {
+app.get("/search", async (req, res) => {
   try {
     const { keyword, category } = req.query;
 
@@ -711,8 +794,8 @@ app.get('/search', async (req, res) => {
     // If a keyword is provided, search in the 'name' or 'services' fields
     if (keyword) {
       query.$or = [
-        { name: { $regex: keyword, $options: 'i' } }, // Case-insensitive search in name
-        { services: { $regex: keyword, $options: 'i' } }, // Case-insensitive search in services
+        { name: { $regex: keyword, $options: "i" } }, // Case-insensitive search in name
+        { services: { $regex: keyword, $options: "i" } }, // Case-insensitive search in services
       ];
     }
 
@@ -723,20 +806,20 @@ app.get('/search', async (req, res) => {
 
     // Find the matching documents in MongoDB
     const results = await Category.find(query);
-    
+
     res.status(200).json(results);
   } catch (err) {
-    res.status(500).json({ message: 'Server error', error: err });
+    res.status(500).json({ message: "Server error", error: err });
   }
 });
 
 // add education by juwel
 // POST route to handle education submission
-app.post('/api/education', async (req, res) => {
+app.post("/api/education", async (req, res) => {
   const { educationList, seller_email } = req.body;
 
   if (!educationList || educationList.length === 0 || !seller_email) {
-    return res.status(400).json({ message: 'All fields are required.' });
+    return res.status(400).json({ message: "All fields are required." });
   }
 
   try {
@@ -745,7 +828,10 @@ app.post('/api/education', async (req, res) => {
 
     // If user doesn't exist, create a new one
     if (!user) {
-      user = new Qualification({ email: seller_email, education: educationList });
+      user = new Qualification({
+        email: seller_email,
+        education: educationList,
+      });
     } else {
       // Push new education entries into the user's education array
       educationList.forEach((entry) => {
@@ -761,11 +847,11 @@ app.post('/api/education', async (req, res) => {
     await user.save();
 
     res.status(200).json({
-      message: 'Education data saved successfully!',
+      message: "Education data saved successfully!",
       data: user,
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error saving education data.', error });
+    res.status(500).json({ message: "Error saving education data.", error });
   }
 });
 app.get("/api/education/:email", async (req, res) => {
@@ -777,6 +863,47 @@ app.get("/api/education/:email", async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: "Error finding user" });
+  }
+});
+
+// Route to add languages for a user
+app.post("/api/languages", async (req, res) => {
+  const { languages, seller_email } = req.body;
+
+  console.log("Received languages:", languages);
+  console.log("Seller email:", seller_email);
+
+  if (!Array.isArray(languages) || languages.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "Languages must be a non-empty array." });
+  }
+
+  try {
+    let languageEntry = await Language.findOne({ seller_email });
+    console.log("Existing language entry:", languageEntry);
+
+    if (!languageEntry) {
+      // Make sure to include all required fields
+      languageEntry = new Language({
+        languages,
+        seller_email,
+        // Add other required fields if necessary
+      });
+      console.log("Creating new language entry:", languageEntry);
+    } else {
+      console.log("Updating existing language entry:", languageEntry);
+      const existingLanguages = new Set(languageEntry.languages);
+      languages.forEach((lang) => existingLanguages.add(lang));
+      languageEntry.languages = Array.from(existingLanguages);
+    }
+
+    const savedLanguageEntry = await languageEntry.save();
+    console.log("Saved language entry:", savedLanguageEntry);
+    res.json({ addedLanguages: savedLanguageEntry.languages });
+  } catch (error) {
+    console.error("Error saving languages:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -793,45 +920,18 @@ app.get("/api/languages/:email", async (req, res) => {
   }
 });
 
-// Route to add languages for a user
-app.post('/api/languages', async (req, res) => {
-  const { languages, seller_email } = req.body;
-  
-  try {
-    // Find the existing language entry for the user
-    let languageEntry = await Language.findOne({ seller_email });
-    
-    // If it doesn't exist, create a new one
-    if (!languageEntry) {
-      languageEntry = new Language({ languages, seller_email });
-    } else {
-      // Add new languages, ensuring no duplicates
-      const existingLanguages = new Set(languageEntry.languages);
-      languages.forEach(lang => existingLanguages.add(lang));
-      languageEntry.languages = Array.from(existingLanguages);
-    }
-
-    // Save the entry
-    await languageEntry.save();
-    res.json({ addedLanguages: languageEntry.languages });
-  } catch (error) {
-    console.error('Error adding languages:', error);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
 // Get all freelancers
-app.get('/api/freelancers', async (req, res) => {
+app.get("/api/freelancers", async (req, res) => {
   try {
     const freelancers = await Freelancer.find();
     res.json(freelancers);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error' });
+    res.status(500).json({ message: "Server Error" });
   }
 });
 
 // Add or update freelancer skills add by juwel
-app.post('/api/freelancers/skills', async (req, res) => {
+app.post("/api/freelancers/skills", async (req, res) => {
   const { email, categories } = req.body;
 
   try {
@@ -843,14 +943,14 @@ app.post('/api/freelancers/skills', async (req, res) => {
       freelancer = new Freelancer({ email, categories });
     } else {
       // Update the freelancer's skills by merging existing categories with new ones
-      categories.forEach(newCategory => {
+      categories.forEach((newCategory) => {
         const existingCategory = freelancer.categories.find(
           (cat) => cat.category === newCategory.category
         );
 
         if (existingCategory) {
           // If the category already exists, merge new skills with existing ones
-          newCategory.skills.forEach(skill => {
+          newCategory.skills.forEach((skill) => {
             if (!existingCategory.skills.includes(skill)) {
               existingCategory.skills.push(skill);
             }
@@ -865,13 +965,15 @@ app.post('/api/freelancers/skills', async (req, res) => {
     // Save the freelancer with updated skills
     await freelancer.save();
 
-    res.status(200).json({ message: 'Skills updated successfully!' });
+    res.status(200).json({ message: "Skills updated successfully!" });
   } catch (error) {
-    console.error('Error updating skills:', error);
-    res.status(500).json({ message: 'Error updating skills. Please try again.' });
+    console.error("Error updating skills:", error);
+    res
+      .status(500)
+      .json({ message: "Error updating skills. Please try again." });
   }
 });
-app.get('/api/skills/:email', async (req, res) => {
+app.get("/api/skills/:email", async (req, res) => {
   const email = req.params.email;
   const query = { email: email };
   try {
@@ -880,6 +982,163 @@ app.get('/api/skills/:email', async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: "Error finding user" });
+  }
+});
+// API Endpoint: Get all gigs (with optional search and filter)
+app.get("/api/gigs", async (req, res) => {
+  const { search = "", category = "" } = req.query;
+
+  const query = {
+    gig_title: { $regex: search, $options: "i" },
+  };
+
+  if (category) {
+    query.category = category;
+  }
+
+  try {
+    const gigs = await Gig.find(query);
+    res.json(gigs);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching gigs", error });
+  }
+});
+
+//Route to create a new user
+app.post("/api/users", async (req, res) => {
+  try {
+    // Validate and sanitize the input data before creating the user
+    const { userInfo, rating, skills, qualifications } = req.body;
+    console.log(userInfo);
+    // console.log(rating);
+    // Create a new instance of the NewUser model with the incoming data
+    const newUser = new NewUser({
+      userInfo: userInfo || [],
+      rating: rating || [], // Default to an empty array if no ratings are provided
+      skills: skills || [], // Default to an empty array if no skills are provided
+      qualifications: qualifications || [], // Default to an empty array if no qualifications are provided
+    });
+console.log(newUser);
+    // Save the new user to the database
+    await newUser.save();
+
+    // Send a success response back to the client
+    res.status(201).json(newUser);
+  } catch (error) {
+    // Handle any errors that occur during the save operation
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// app.post("/api/users", async (req, res) => {
+//   try {
+//     const { userInfo, rating } = req.body;
+// console.log(req.body)
+//     if (!userInfo || !userInfo[0].email) {
+//       return res.status(400).json({ error: "Email is required." });
+//     }
+
+//     // Check if the email already exists in the database
+//     const existingUser = await NewUser.findOne({ "userInfo.email": userInfo[0].email });
+//     if (existingUser) {
+//       return res.status(400).json({ error: "Email is already in use." });
+//     }
+
+//     // Create a new user if no duplicate is found
+//     const newUser = new NewUser({
+//       userInfo: userInfo || [],
+//       rating: rating || [],
+      
+//     });
+
+    // Save the new user to the database
+//     await newUser.save();
+
+//     // Send a success response back to the client
+//     res.status(201).json(newUser);
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
+
+
+// PATCH route to update rating, skills, or qualifications
+app.patch("/api/users/:id", async (req, res) => {
+  try {
+    const { id } = req.params; // Get user ID from URL params
+    const { rating, skills, qualifications } = req.body; // Data to be updated
+
+    // Build update object
+    const updateData = {};
+
+    // Append rating if provided
+    if (rating) {
+      updateData.$push = { rating: rating }; // Push new rating to the array
+    }
+
+    // Append skills if provided
+    if (skills) {
+      updateData.$push = { skills: skills }; // Push new skills to the array
+    }
+
+    // Append qualifications if provided
+    if (qualifications) {
+      updateData.$push = { qualifications: qualifications }; // Push new qualifications to the array
+    }
+
+    // Update the user document using $push to add data to arrays
+    const updatedUser = await NewUser.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true } // Return updated document
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+// Update a job post by ID
+app.put('/jobPost/:id', async (req, res) => {
+  const { 
+      job_title, 
+      job_description, 
+      max_price, 
+      min_price, 
+      job_image, 
+      category, 
+      subcategory, 
+      applicationDeadline 
+  } = req.body;
+
+  try {
+      // Find the job post by ID
+      let jobPost = await PostJob.findById(req.params.id);
+      if (!jobPost) {
+          return res.status(404).json({ message: 'Job post not found' });
+      }
+
+      // Update the job post fields
+      jobPost.job_title = job_title;
+      jobPost.job_description = job_description;
+      jobPost.max_price = max_price;
+      jobPost.min_price = min_price;
+      jobPost.job_image = job_image;
+      jobPost.category = category;
+      jobPost.subcategory = subcategory;
+      jobPost.applicationDeadline = applicationDeadline;
+
+      // Save the updated job post
+      await jobPost.save();
+
+      res.json({ message: 'Job post updated successfully', jobPost });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error', error });
   }
 });
 
