@@ -8,7 +8,8 @@ const { ObjectId } = require("mongodb");
 const req = require("express/lib/request");
 const bcrypt = require("bcrypt");
 const { Schema } = mongoose;
-const port = process.env.PORT || 5000;
+const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
+const port = process.env.PORT || 3000;
 // middleware
 const corsOptions = {
   origin: [
@@ -70,50 +71,50 @@ const userSchema = new mongoose.Schema({
 });
 // New user nested schema
 
-const newUserSchema = new mongoose.Schema({
-  userInfo: [
-    {
-      name: { type: String, required: true },
-      email: { type: String, required: true, unique: true },
-      photoURL: { type: String, required: true },
-      password: { type: String, required: true },
-      role: { type: String, required: true },
-    },
-  ],
+// const newUserSchema = new mongoose.Schema({
+//   userInfo: [
+//     {
+//       name: { type: String, required: true },
+//       email: { type: String, required: true, unique: true },
+//       photoURL: { type: String, required: true },
+//       password: { type: String, required: true },
+//       role: { type: String, required: true },
+//     },
+//   ],
 
-  rating: [
-    {
-      freelancerId: { type: String, required: false },
+//   rating: [
+//     {
+//       freelancerId: { type: String, required: false },
 
-      clientId: { type: String, required: false },
-      rating: { type: Number, required: true, min: 1, max: 5 },
-      review: { type: String, required: true },
-      createdAt: { type: Date, default: Date.now },
-    },
-  ],
-  skills: [
-    {
-      category: { type: String, required: true }, // Category name
-      skills: [{ type: String, required: true }], // List of skills under the category
-    },
-  ],
-  qualifications: [
-    {
-      education: { type: String, required: true },
-      level: { type: String, required: true },
-      schoolName: { type: String, required: true },
-    },
-  ],
-});
+//       clientId: { type: String, required: false },
+//       rating: { type: Number, required: true, min: 1, max: 5 },
+//       review: { type: String, required: true },
+//       createdAt: { type: Date, default: Date.now },
+//     },
+//   ],
+//   skills: [
+//     {
+//       category: { type: String, required: true }, // Category name
+//       skills: [{ type: String, required: true }], // List of skills under the category
+//     },
+//   ],
+//   qualifications: [
+//     {
+//       education: { type: String, required: true },
+//       level: { type: String, required: true },
+//       schoolName: { type: String, required: true },
+//     },
+//   ],
+// });
 
 // check purpose 
 // Rating Schema
 const ratingsSchema = new Schema({
-  averageRating: { type: Number, required: true },
-  reviewsCount: { type: Number, required: true },
+  averageRating: { type: Number, required: true, min: 0, max: 5 }, // Rating should be between 0 and 5
+  reviewsCount: { type: Number, required: true, default: 0 },
   individualRatings: [
     {
-      rating: { type: Number, required: true },
+      rating: { type: Number, required: true, min: 1, max: 5 },
       review: { type: String },
       reviewer: { type: Schema.Types.ObjectId, ref: 'Users' }, // Reference to reviewer (another user)
     }
@@ -123,21 +124,21 @@ const ratingsSchema = new Schema({
 // Skill Schema
 const skillsSchema = new Schema({
   name: { type: String, required: true },
-  proficiency: { type: String,  required: true },
+  proficiency: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], required: true },
 });
 
 // Qualification Schema
 const qualificationsSchema = new Schema({
   title: { type: String, required: true },
   institution: { type: String, required: true },
-  year: { type: Number, required: true },
+  year: { type: Number, required: true, min: 1900, max: new Date().getFullYear() }, // Validation for year
 });
 
 // Education Schema
 const educationsSchema = new Schema({
   degree: { type: String, required: true },
   institution: { type: String, required: true },
-  yearOfGraduation: { type: Number, required: true },
+  yearOfGraduation: { type: Number, required: true, min: 1900, max: new Date().getFullYear() }, // Validation for year
 });
 
 // Language Schema
@@ -147,7 +148,7 @@ const languagesSchema = new Schema({
 });
 
 // Main Users Schema
-const usersSchema = new Schema(
+const newUserSchema = new Schema(
   {
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
@@ -164,6 +165,7 @@ const usersSchema = new Schema(
   },
   { timestamps: true } // Automatically adds createdAt and updatedAt fields
 );
+
 
 
 
@@ -318,15 +320,13 @@ const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
 const Payment = mongoose.model( "Payment", paymentSchema )
-
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
 const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
- 
-const Users = mongoose.model('Users', usersSchema);// Creating juwel
+//const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
 // const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
@@ -633,6 +633,48 @@ app.get("/jobDetails/:id", async (req, res) => {
   }
 });
 
+//add bu juwel
+// Update a job post by ID
+app.put('/jobPost/:id', async (req, res) => {
+  const { 
+      job_title, 
+      job_description, 
+      max_price, 
+      min_price, 
+      job_image, 
+      category, 
+      subcategory, 
+      applicationDeadline 
+  } = req.body;
+
+  try {
+      // Find the job post by ID
+      let jobPost = await PostJob.findById(req.params.id);
+      if (!jobPost) {
+          return res.status(404).json({ message: 'Job post not found' });
+      }
+
+      // Update the job post fields
+      jobPost.job_title = job_title;
+      jobPost.job_description = job_description;
+      jobPost.max_price = max_price;
+      jobPost.min_price = min_price;
+      jobPost.job_image = job_image;
+      jobPost.category = category;
+      jobPost.subcategory = subcategory;
+      jobPost.applicationDeadline = applicationDeadline;
+
+      // Save the updated job post
+      await jobPost.save();
+
+      res.json({ message: 'Job post updated successfully', jobPost });
+  } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error', error });
+  }
+});
+//end of bu juwel
+
 // add by juwel
 app.delete("/job/:id", async (req, res) => {
   const id = req.params.id;
@@ -818,7 +860,7 @@ app.delete("/bit/:id", async (req, res) => {
 app.post('/create-payment-intent', async (req, res) => {
   const { price } = req.body;
   const amount = parseInt(price );
-  console.log(amount, 'amount inside the intent')
+  // console.log(amount, 'amount inside the intent')
 
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amount,
@@ -835,8 +877,7 @@ app.post('/create-payment-intent', async (req, res) => {
   
 app.post("/payments", async (req, res) => {
   const { name, email ,price , transactionId , date  } = req.body;
-  console.log( name , email )
-
+  // console.log( name , email )
   try {
     const payment = new Payment ({
       name,
@@ -1097,58 +1138,27 @@ app.get("/api/gigs", async (req, res) => {
 });
 
 //Route to create a new user
-app.post("/api/users", async (req, res) => {
-  try {
-    // Validate and sanitize the input data before creating the user
-    const { userInfo, rating, skills, qualifications } = req.body;
-    console.log(userInfo);
-    // console.log(rating);
-    // Create a new instance of the NewUser model with the incoming data
-    const newUser = new NewUser({
-      userInfo: userInfo || [],
-      rating: rating || [], // Default to an empty array if no ratings are provided
-      skills: skills || [], // Default to an empty array if no skills are provided
-      qualifications: qualifications || [], // Default to an empty array if no qualifications are provided
-    });
-console.log(newUser);
-    // Save the new user to the database
-    await newUser.save();
-
-    // Send a success response back to the client
-    res.status(201).json(newUser);
-  } catch (error) {
-    // Handle any errors that occur during the save operation
-    res.status(400).json({ error: error.message });
-  }
-});
-
 // app.post("/api/users", async (req, res) => {
 //   try {
-//     const { userInfo, rating } = req.body;
-// console.log(req.body)
-//     if (!userInfo || !userInfo[0].email) {
-//       return res.status(400).json({ error: "Email is required." });
-//     }
-
-//     // Check if the email already exists in the database
-//     const existingUser = await NewUser.findOne({ "userInfo.email": userInfo[0].email });
-//     if (existingUser) {
-//       return res.status(400).json({ error: "Email is already in use." });
-//     }
-
-//     // Create a new user if no duplicate is found
+//     // Validate and sanitize the input data before creating the user
+//     const { userInfo, rating, skills, qualifications } = req.body;
+//     console.log(userInfo);
+//     // console.log(rating);
+//     // Create a new instance of the NewUser model with the incoming data
 //     const newUser = new NewUser({
 //       userInfo: userInfo || [],
-//       rating: rating || [],
-      
+//       rating: rating || [], // Default to an empty array if no ratings are provided
+//       skills: skills || [], // Default to an empty array if no skills are provided
+//       qualifications: qualifications || [], // Default to an empty array if no qualifications are provided
 //     });
-
-    // Save the new user to the database
+// console.log(newUser);
+//     // Save the new user to the database
 //     await newUser.save();
 
 //     // Send a success response back to the client
 //     res.status(201).json(newUser);
 //   } catch (error) {
+//     // Handle any errors that occur during the save operation
 //     res.status(400).json({ error: error.message });
 //   }
 // });
@@ -1194,46 +1204,47 @@ app.patch("/api/users/:id", async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-// Update a job post by ID
-app.put('/jobPost/:id', async (req, res) => {
-  const { 
-      job_title, 
-      job_description, 
-      max_price, 
-      min_price, 
-      job_image, 
-      category, 
-      subcategory, 
-      applicationDeadline 
-  } = req.body;
+// User Registration
+app.post('/api/users', async (req, res) => {
+  const { name, email, password, photoURL, role } = req.body;
 
   try {
-      // Find the job post by ID
-      let jobPost = await PostJob.findById(req.params.id);
-      if (!jobPost) {
-          return res.status(404).json({ message: 'Job post not found' });
-      }
+    // Check if the user already exists
+    const existingUser = await NewUser.findOne({ email });
+    if (existingUser) {
+      console.log('User already exists with email:', email);
+      return res.status(400).json({ message: 'User already exists' });
+    }
 
-      // Update the job post fields
-      jobPost.job_title = job_title;
-      jobPost.job_description = job_description;
-      jobPost.max_price = max_price;
-      jobPost.min_price = min_price;
-      jobPost.job_image = job_image;
-      jobPost.category = category;
-      jobPost.subcategory = subcategory;
-      jobPost.applicationDeadline = applicationDeadline;
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Save the updated job post
-      await jobPost.save();
+    // Create a new user
+    const newUser = new NewUser({
+      name,
+      email,
+      password: hashedPassword,
+      photoURL,
+      role,
+    });
 
-      res.json({ message: 'Job post updated successfully', jobPost });
+    // Save the user to the database
+    await newUser.save();
+    console.log('User created successfully:', newUser);
+    res.status(201).json({ message: 'User registered successfully' });
+
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error', error });
+    console.error('Error while registering user:', error);
+
+    // If the error is a MongoDB duplicate key error, respond appropriately
+    if (error.code === 11000) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    // For other errors, send a general server error
+    res.status(500).json({ message: 'Server error' });
   }
 });
-
 // under basic server
 app.get("/", (req, res) => {
   res.send("ProLance is running");
