@@ -1,16 +1,23 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const http = require ('http')
 const mongoose = require("mongoose");
+const {Server} = require('socket.io')
 const app = express();
-const jwt = require("jsonwebtoken");
-const { ObjectId } = require("mongodb");
-const req = require("express/lib/request");
-const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken")
+
 const { Schema } = mongoose;
 const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
 const port = process.env.PORT || 3000;
 // middleware
+const server = http.createServer(app)
+const io = new Server(server,{
+  cors:{
+    origin:"http://localhost:5173",
+    methods:["GET","POST","DELETE"]
+  }
+});
 const corsOptions = {
   origin: [
     "http://localhost:5173",
@@ -313,6 +320,26 @@ const freelancerSchema = new mongoose.Schema({
   categories: [skillSchema], // Array of categories and their skills
   categories: [skillSchema],  // Array of categories and their skills   
 });
+// soket io message 
+const messageSchema = new mongoose.Schema({
+  sender: {
+    type: String,
+   
+  },
+  receiver: {
+    type: String,
+    
+  },
+  message: {
+    type: String,
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 
 //  Mongoose model
 const Gig = mongoose.model("Gig", gigSchema);
@@ -320,17 +347,49 @@ const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
 const Payment = mongoose.model( "Payment", paymentSchema )
+const Message = mongoose.model('Message', messageSchema);
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
 const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
+ 
+// const Users = mongoose.model('Users', usersSchema);// Creating juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
 // const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
 // Routes
+// message 
+app.post('/api/messages', async (req, res) => {
+  const { sender, receiver, message } = req.body;
+  // console.log(message,sender,receiver)
+  try {
+    const newMessage = new Message({ sender, receiver, message });
+    await newMessage.save();
+    res.status(201).json(newMessage);
+  } catch (err) {
+    res.status(500).json({ message: 'Error sending message', error: err });
+  }
+});
+app.get('/api/messages/:sender/:receiver', async (req, res) => {
+  const { sender, receiver } = req.params;
+
+  try {
+    const messages = await Message.find({
+      $or: [
+        { sender, receiver },
+        { sender: receiver, receiver: sender },
+      ],
+    }).sort({ timestamp: 1 });
+
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching messages:', error);
+    res.status(500).send('Server error');
+  }
+});
 // jwt
 app.post("/jwt", async (req, res) => {
   const user = req.body;
