@@ -9,7 +9,7 @@ const jwt = require("jsonwebtoken")
 
 const { Schema } = mongoose;
 const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 // middleware
 const server = http.createServer(app)
 const io = new Server(server,{
@@ -373,6 +373,26 @@ app.post('/api/messages', async (req, res) => {
     res.status(500).json({ message: 'Error sending message', error: err });
   }
 });
+app.delete('/api/messages/clear', async (req, res) => {
+  const{sender,receiver}= req.body
+
+  try {
+    await Message.deleteMany({
+      $or:[
+        {sender: sender, receiver: receiver},
+        {sender: receiver, receiver: sender},
+      ]
+    });
+    res.status(200).send('Chat history cleared');
+  } catch (error) {
+    console.error('Failed to clear chat history:', error);
+    res.status(500).send('Server error');
+  }
+});
+app.get('/message', async(req,res) =>{
+  const result = await Message.find()
+  res.send(result)
+})
 app.get('/api/messages/:sender/:receiver', async (req, res) => {
   const { sender, receiver } = req.params;
 
@@ -417,7 +437,17 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
-
+// user get without login in user 
+app.get('/user/:email', async(req,res)=>{
+  const email = req.params.email
+  try {
+    const result = await User.find({email:{$ne: email}})
+    res.send(result)
+  } catch (error) {
+    res.status(500).send({message:"something wrong"})
+    
+  }
+})
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
