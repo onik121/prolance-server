@@ -174,6 +174,8 @@ const newUserSchema = new Schema(
 const paymentSchema = new mongoose.Schema({
   name: { type: String, required: false },
   email: { type: String, required: false },
+  seller_email: { type: String, required: false },
+  bit_title: { type: String, required: false },
   price : { type : Number , require  : false },
   transactionId: { type: String, required: false  },
   date : { type: Date, default: Date.now },
@@ -857,6 +859,18 @@ app.delete("/bit/:id", async (req, res) => {
 
 //payment route by kamrul
 
+// add for payment dynamic bid amount
+app.get("/singleBids/:id", async (req, res) => {
+  const id = req.params.id;
+    try {
+      const results = await Bit.findById(id);
+      res.status(200).json(results);
+    } catch (error) {
+      console.error("Error fetching bits:", error);
+      res.status(500).json({ error: "Failed to fetch bits" });
+    }
+  });
+
 app.post('/create-payment-intent', async (req, res) => {
   const { price } = req.body;
   const amount = parseInt(price );
@@ -876,12 +890,14 @@ app.post('/create-payment-intent', async (req, res) => {
 
   
 app.post("/payments", async (req, res) => {
-  const { name, email ,price , transactionId , date  } = req.body;
+  const { name, email , seller_email ,bit_title , price , transactionId , date  } = req.body;
   // console.log( name , email )
   try {
     const payment = new Payment ({
       name,
       email,
+      seller_email,
+      bit_title,
       price, 
       transactionId,
       date 
@@ -897,13 +913,66 @@ app.post("/payments", async (req, res) => {
 });
 
 
+// app.get("/payments/:email", async (req, res) => {
+//   const { email } = req.params; // Extract email from the route params
+//   const seller_email = req.query.seller_email; // Assuming seller_email is coming from query params
+
+//   try {
+//     const payments = await Payment.find({
+//       $or: [{ email: seller_email }, { email: email }],
+//     });
+
+//     res.send(payments);
+//     console.log(payments);
+//   } catch (error) {
+//     res.status(500).send({ message: "An error occurred", error });
+//   }
+// });
+
 app.get("/payments", async (req, res) => {
-  const payments = await Payment.find();
-  res.send(payments);
+  try {
+    const payment = await Payment.find({});
+    res.status(200).json(payment);
+  } catch (error) {
+    console.error("Error fetching bits:", error);
+    res.status(500).json({ error: "Failed to fetch bits" });
+  }
+});
+// ge by buyer
+app.get("/payments/:email", async (req, res) => {
+  const email  = req.params.email;
+ console.log(email)
+  const query = { email: email };
+  try {
+    const result = await Payment.find(query);
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error finding user" });
+  }
 });
 
-// Basic health check route
-// POST: Submit a new rating
+app.get("/payment/seller/:email", async (req, res) => {
+  const sellerEmail = req.params.email;
+
+  try {
+    // Find a bit by seller's email
+    const payment = await Payment.find({
+      seller_email: sellerEmail,
+    });
+
+    // Check if the bit exists
+    if (!payment) {
+      return res.status(404).json({ error: "Bit not found" });
+    }
+
+    // Send the found bit as a JSON response
+    res.status(200).json(payment);
+  } catch (error) {
+    console.error("Error fetching bit:", error);
+    res.status(500).json({ error: "Failed to fetch bit" });
+  }
+});
 
 app.post("/reviewRating", async (req, res) => {
   const { freelancerId, clientId, rating, review } = req.body;
