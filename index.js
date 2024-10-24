@@ -74,54 +74,24 @@ const userSchema = new mongoose.Schema({
   role: { type: String },
   description:{type:String},
   password: { type: String, },
-  role: { type: String, },
+  role: { type: String,  },
 });
-// New user nested schema
-
-// const newUserSchema = new mongoose.Schema({
-//   userInfo: [
-//     {
-//       name: { type: String, required: true },
-//       email: { type: String, required: true, unique: true },
-//       photoURL: { type: String, required: true },
-//       password: { type: String, required: true },
-//       role: { type: String, required: true },
-//     },
-//   ],
-
-//   rating: [
-//     {
-//       freelancerId: { type: String, required: false },
-
-//       clientId: { type: String, required: false },
-//       rating: { type: Number, required: true, min: 1, max: 5 },
-//       review: { type: String, required: true },
-//       createdAt: { type: Date, default: Date.now },
-//     },
-//   ],
-//   skills: [
-//     {
-//       category: { type: String, required: true }, // Category name
-//       skills: [{ type: String, required: true }], // List of skills under the category
-//     },
-//   ],
-//   qualifications: [
-//     {
-//       education: { type: String, required: true },
-//       level: { type: String, required: true },
-//       schoolName: { type: String, required: true },
-//     },
-//   ],
-// });
-
-// check purpose 
-// Rating Schema
+// Message Store 
+const messageStoreSchema = new mongoose.Schema({
+  sender:{type: String, required:[true,"sender data need"]},
+  receiver:{type: String, required:[true,"receiver data needed"]},
+  receiverName:{ type: String, required:[true]},
+  senderName:{ type: String, required:[true]},
+},{
+  timestamps:true 
+})
+// Rating Schema 
 const ratingsSchema = new Schema({
   averageRating: { type: Number, required: true, min: 0, max: 5 }, // Rating should be between 0 and 5
   reviewsCount: { type: Number, required: true, default: 0 },
   individualRatings: [
     {
-      rating: { type: Number, required: true, min: 1, max: 5 },
+      rating: { type: Number, required: true, min: 1, max: 5 }, 
       review: { type: String },
       reviewer: { type: Schema.Types.ObjectId, ref: 'Users' }, // Reference to reviewer (another user)
     }
@@ -221,54 +191,7 @@ const bitSchema = new mongoose.Schema({
   Buyer_email: { type: String, required: true },
 });
 
-// review rating schema add by juwel
-// const RatingSchema = new mongoose.Schema({
-//   freelancerId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     required: true,
-//     ref: "Freelancer",
-//   },
-//   clientId: {
-//     type: mongoose.Schema.Types.ObjectId,
-//     required: true,
-//     ref: "Client",
-//   },
-//   rating: { type: Number, required: true, min: 1, max: 5 },
-//   review: { type: String, required: true },
-//   createdAt: { type: Date, default: Date.now },
-// });
 
-// Real time project tracking  add by juwel
-// const ProjectSchema = new mongoose.Schema(
-//   {
-//     title: String,
-//     description: String,
-//     status: {
-//       type: String,
-//       enum: ["pending", "in-progress", "completed"],
-//       default: "pending",
-//     },
-//     milestones: [
-//       {
-//         title: String,
-//         description: String,
-//         dueDate: Date,
-//         completed: {
-//           type: Boolean,
-//           default: false,
-//         },
-//       },
-//     ],
-//     freelancer: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//     },
-//     client: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-//     deadline: Date,
-//     files: [String], // File URLs or paths
-//   },
-//   { timestamps: true }
-// );
 
 // review and rating schema add by juwel
 const ratingSchema = new mongoose.Schema({
@@ -334,10 +257,9 @@ const messageSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
+  
+},{
+  timestamps:true
 });
 
 
@@ -354,14 +276,46 @@ const Qualification = mongoose.model("Qualification", qualificationSchema); // a
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
- 
+ const messageStore = mongoose.model('messageStore',messageStoreSchema)
 // const Users = mongoose.model('Users', usersSchema);// Creating juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
 // const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
 // Routes
-// message 
+// message Store added mahamudur khan
+app.delete('/messageStore', async(req,res) =>{
+    const result = await messageStore.deleteMany()
+    res.send(result)
+})
+app.get('/messageStore', async(req,res)=>{
+   const result = await messageStore.find()
+   res.send(result)
+})
+app.get('/messageStore/:email', async(req,res)=>{
+  const email = req.params.email
+  // console.log(email)
+  try {
+    const result = await messageStore.find({
+      $or:[{sender:email},{receiver: email}]
+    })
+   res.send(result)
+  } catch (error) {
+    res.status(500).json({ message: 'Error sending message', error: err });
+  }
+   
+})
+app.post('/messageStore', async(req,res) =>{
+  const data = req.body
+  
+   const existMessageStored = await messageStore.findOne({sender:data.sender,receiver:data.receiver})
+   if(existMessageStored){
+     res.status(500).json({message:'already added'})
+   }
+   const result = await messageStore.create(data)
+   res.send(result)
+})
+// message  added mahamudur khan
 app.post('/api/messages', async (req, res) => {
   const { sender, receiver, message } = req.body;
   // console.log(message,sender,receiver)
@@ -1226,31 +1180,7 @@ app.get("/api/gigs", async (req, res) => {
   }
 });
 
-//Route to create a new user
-// app.post("/api/users", async (req, res) => {
-//   try {
-//     // Validate and sanitize the input data before creating the user
-//     const { userInfo, rating, skills, qualifications } = req.body;
-//     console.log(userInfo);
-//     // console.log(rating);
-//     // Create a new instance of the NewUser model with the incoming data
-//     const newUser = new NewUser({
-//       userInfo: userInfo || [],
-//       rating: rating || [], // Default to an empty array if no ratings are provided
-//       skills: skills || [], // Default to an empty array if no skills are provided
-//       qualifications: qualifications || [], // Default to an empty array if no qualifications are provided
-//     });
-// console.log(newUser);
-//     // Save the new user to the database
-//     await newUser.save();
 
-//     // Send a success response back to the client
-//     res.status(201).json(newUser);
-//   } catch (error) {
-//     // Handle any errors that occur during the save operation
-//     res.status(400).json({ error: error.message });
-//   }
-// });
 
 
 // PATCH route to update rating, skills, or qualifications
