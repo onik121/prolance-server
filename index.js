@@ -306,14 +306,13 @@ const languageSchema = new mongoose.Schema({
 
 // Freelancer skills Schema add by juwel
 const skillSchema = new mongoose.Schema({
-  category: { type: String, required: true }, // Category name
-  skills: [{ type: String, required: true }], // List of skills under the category
+  email: { type: String, required: true, unique: true },
+  skills: { type: [String], default: [] },
 });
 
 const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true }, // Freelancer's email
-  categories: [skillSchema], // Array of categories and their skills
-  categories: [skillSchema],  // Array of categories and their skills   
+  skills: { type: [String], default: [] },   
 });
 
 //  Mongoose model
@@ -329,8 +328,6 @@ const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
-
-// const Project = mongoose.model('Project', projectSchema); add by juwel  Project Model
 
 // Routes
 // jwt
@@ -482,17 +479,6 @@ app.get("/showgigs", async (req, res) => {
     res.status(500).send("Error fetching gigs");
   }
 });
-
-// add by Juwel
-// app.get("/showAllGigs", async (req, res) => {
-//   try {
-//     const gigs = await Gig.find();
-//     res.send(gigs);
-//   } catch (error) {
-//     console.error("Error fetching gigs show data:", error);
-//     res.status(500).send({ message: "Error fetching gigs data" });
-//   }
-// });
 
 // Fetch single gigs
 app.get("/showgig/:email", async (req, res) => {
@@ -912,23 +898,6 @@ app.post("/payments", async (req, res) => {
   
 });
 
-
-// app.get("/payments/:email", async (req, res) => {
-//   const { email } = req.params; // Extract email from the route params
-//   const seller_email = req.query.seller_email; // Assuming seller_email is coming from query params
-
-//   try {
-//     const payments = await Payment.find({
-//       $or: [{ email: seller_email }, { email: email }],
-//     });
-
-//     res.send(payments);
-//     console.log(payments);
-//   } catch (error) {
-//     res.status(500).send({ message: "An error occurred", error });
-//   }
-// });
-
 app.get("/payments", async (req, res) => {
   try {
     const payment = await Payment.find({});
@@ -1132,47 +1101,51 @@ app.get("/api/freelancers", async (req, res) => {
   }
 });
 
-// Add or update freelancer skills add by juwel
-app.post("/api/freelancers/skills", async (req, res) => {
-  const { email, categories } = req.body;
+// POST route to add skills
+app.post('/api/freelancers/skills', async (req, res) => {
+  const { email, skills } = req.body;
+
+  // Log the request body for debugging
+  console.log(req.body);
+
+  // Validate input
+  if (!email || !Array.isArray(skills)) {
+    return res.status(400).json({ message: 'Invalid data provided' });
+  }
 
   try {
-    // Check if the freelancer already exists
-    let freelancer = await Freelancer.findOne({ email });
+    // Find existing skills for the user
+    const existingSkills = await Freelancer.findOne({ email });
 
-    if (!freelancer) {
-      // Create a new freelancer with categories and skills
-      freelancer = new Freelancer({ email, categories });
+    if (existingSkills) {
+      // If the user exists, check their existing skills
+      if (!existingSkills.skills) {
+        existingSkills.skills = []; // Ensure skills is initialized to an empty array
+      }
+
+      // Filter out the skills that already exist in the database
+      const newSkills = skills.filter(skill => 
+        !existingSkills.skills.includes(skill)
+      );
+
+      // If there are no new skills to add, return an error
+      if (newSkills.length === 0) {
+        return res.status(400).json({ message: 'No new skills to add' });
+      }
+
+      // Update the user's skills with new skills
+      existingSkills.skills.push(...newSkills);
+      await existingSkills.save();
     } else {
-      // Update the freelancer's skills by merging existing categories with new ones
-      categories.forEach((newCategory) => {
-        const existingCategory = freelancer.categories.find(
-          (cat) => cat.category === newCategory.category
-        );
-
-        if (existingCategory) {
-          // If the category already exists, merge new skills with existing ones
-          newCategory.skills.forEach((skill) => {
-            if (!existingCategory.skills.includes(skill)) {
-              existingCategory.skills.push(skill);
-            }
-          });
-        } else {
-          // If the category doesn't exist, add it
-          freelancer.categories.push(newCategory);
-        }
-      });
+      // If no existing skills, create a new entry with an empty skills array
+      const newSkillsEntry = new Freelancer({ email, skills }); // skills will be saved as provided
+      await newSkillsEntry.save();
     }
 
-    // Save the freelancer with updated skills
-    await freelancer.save();
-
-    res.status(200).json({ message: "Skills updated successfully!" });
+    res.status(201).json({ message: 'Skills added successfully!' });
   } catch (error) {
-    console.error("Error updating skills:", error);
-    res
-      .status(500)
-      .json({ message: "Error updating skills. Please try again." });
+    console.error('Error adding skills:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 });
 app.get("/api/skills/:email", async (req, res) => {
@@ -1205,33 +1178,6 @@ app.get("/api/gigs", async (req, res) => {
     res.status(500).json({ message: "Error fetching gigs", error });
   }
 });
-
-//Route to create a new user
-// app.post("/api/users", async (req, res) => {
-//   try {
-//     // Validate and sanitize the input data before creating the user
-//     const { userInfo, rating, skills, qualifications } = req.body;
-//     console.log(userInfo);
-//     // console.log(rating);
-//     // Create a new instance of the NewUser model with the incoming data
-//     const newUser = new NewUser({
-//       userInfo: userInfo || [],
-//       rating: rating || [], // Default to an empty array if no ratings are provided
-//       skills: skills || [], // Default to an empty array if no skills are provided
-//       qualifications: qualifications || [], // Default to an empty array if no qualifications are provided
-//     });
-// console.log(newUser);
-//     // Save the new user to the database
-//     await newUser.save();
-
-//     // Send a success response back to the client
-//     res.status(201).json(newUser);
-//   } catch (error) {
-//     // Handle any errors that occur during the save operation
-//     res.status(400).json({ error: error.message });
-//   }
-// });
-
 
 // PATCH route to update rating, skills, or qualifications
 app.patch("/api/users/:id", async (req, res) => {
