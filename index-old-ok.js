@@ -10,8 +10,7 @@ const corsOptions = {
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "http://localhost:5175",
-    
+    "http://localhost:5175",    
   ],
   credentials: true,
   optionSuccessStatus: 200,
@@ -23,7 +22,6 @@ app.use(express.json());
 // app.use(express.urlencoded({ extended: true }));
 
 // const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-
 
 // const uri = `mongodb+srv://myUser:tGyzAv5.anjhkeZ@cluster0.0yjrwty.mongodb.net/messagingSystem?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -59,7 +57,6 @@ async function run() {
       const result = await usersCollection.insertOne(user);
       res.send(result);
     });
-
     // app.delete('/users/:id', async(req, res) => {
     // const id = req.params.id;
     // console.log('delete user', id);
