@@ -1,22 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const http = require ('http')
+const http = require("http");
 const mongoose = require("mongoose");
-const {Server} = require('socket.io')
+const { Server } = require("socket.io");
 const app = express();
-const jwt = require("jsonwebtoken")
-
+const jwt = require("jsonwebtoken");
 const { Schema } = mongoose;
-const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
+const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY);
 const port = process.env.PORT || 5000;
 // middleware
-const server = http.createServer(app)
-const io = new Server(server,{
-  cors:{
-    origin:"http://localhost:5173",
-    methods:["GET","POST","DELETE"]
-  }
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "DELETE"],
+  },
 });
 const corsOptions = {
   origin: [
@@ -41,7 +40,8 @@ app.use(express.json());
 // add by juwel
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4ub8q.mongodb.net/jewelranaent?retryWrites=true&w=majority&appName=Cluster0`;
 
-mongoose.connect(uri)
+mongoose
+  .connect(uri)
   .then(() => {
     console.log("Successfully connected to MongoDB via Mongoose!");
   })
@@ -60,10 +60,11 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  seller_image: { type: String, required: true  },
+  seller_image: { type: String, required: true },
   seller_name: { type: String, required: true },
+  freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+  delivery_time: { type: Number, required: true },
 });
-
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -72,56 +73,77 @@ const userSchema = new mongoose.Schema({
   photoURL: { type: String, required: true },
   password: { type: String },
   role: { type: String },
-  description:{type:String},
-  password: { type: String, },
-  role: { type: String,  },
+  description: { type: String },
+  password: { type: String },
+  role: { type: String },
 });
-// Message Store 
-const messageStoreSchema = new mongoose.Schema({
-  sender:{type: String, required:[true,"sender data need"]},
-  receiver:{type: String, required:[true,"receiver data needed"]},
-  receiverName:{ type: String, required:[true]},
-  senderName:{ type: String, required:[true]},
-},{
-  timestamps:true 
-})
-// Rating Schema 
+// Message Store
+const messageStoreSchema = new mongoose.Schema(
+  {
+    sender: { type: String, required: [true, "sender data need"] },
+    receiver: { type: String, required: [true, "receiver data needed"] },
+    receiverName: { type: String, required: [true] },
+    senderName: { type: String, required: [true] },
+  },
+  {
+    timestamps: true,
+  }
+);
+// Rating Schema
 const ratingsSchema = new Schema({
   averageRating: { type: Number, required: true, min: 0, max: 5 }, // Rating should be between 0 and 5
   reviewsCount: { type: Number, required: true, default: 0 },
   individualRatings: [
     {
-      rating: { type: Number, required: true, min: 1, max: 5 }, 
+      rating: { type: Number, required: true, min: 1, max: 5 },
       review: { type: String },
-      reviewer: { type: Schema.Types.ObjectId, ref: 'Users' }, // Reference to reviewer (another user)
-    }
-  ]
+      reviewer: { type: Schema.Types.ObjectId, ref: "Users" }, // Reference to reviewer (another user)
+    },
+  ],
 });
 
 // Skill Schema
 const skillsSchema = new Schema({
   name: { type: String, required: true },
-  proficiency: { type: String, enum: ['Beginner', 'Intermediate', 'Advanced'], required: true },
+  proficiency: {
+    type: String,
+    enum: ["Beginner", "Intermediate", "Advanced"],
+    required: true,
+  },
 });
 
 // Qualification Schema
 const qualificationsSchema = new Schema({
   title: { type: String, required: true },
   institution: { type: String, required: true },
-  year: { type: Number, required: true, min: 1900, max: new Date().getFullYear() }, // Validation for year
+  year: {
+    type: Number,
+    required: true,
+    min: 1900,
+    max: new Date().getFullYear(),
+  }, // Validation for year
 });
 
 // Education Schema
 const educationsSchema = new Schema({
   degree: { type: String, required: true },
   institution: { type: String, required: true },
-  yearOfGraduation: { type: Number, required: true, min: 1900, max: new Date().getFullYear() }, // Validation for year
+  yearOfGraduation: {
+    type: Number,
+    required: true,
+    min: 1900,
+    max: new Date().getFullYear(),
+  }, // Validation for year
 });
 
 // Language Schema
 const languagesSchema = new Schema({
   language: { type: String, required: true },
-  proficiency: { type: String, enum: ['Basic', 'Conversational', 'Fluent', 'Native'], required: true },
+  proficiency: {
+    type: String,
+    enum: ["Basic", "Conversational", "Fluent", "Native"],
+    required: true,
+  },
 });
 
 // Main Users Schema
@@ -131,8 +153,8 @@ const newUserSchema = new Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     photoURL: { type: String, required: true }, // Profile picture URL
-    role: { type: String, default: 'user' }, // User role, default is 'user'
-    
+    role: { type: String, default: "user" }, // User role, default is 'user'
+
     // Nested Schemas
     ratings: ratingsSchema, // Embeds rating schema
     skills: [skillsSchema], // Array of skills
@@ -143,24 +165,17 @@ const newUserSchema = new Schema(
   { timestamps: true } // Automatically adds createdAt and updatedAt fields
 );
 
-
-
-
-// paymentSchema by kamrul 
+// paymentSchema by kamrul
 
 const paymentSchema = new mongoose.Schema({
   name: { type: String, required: false },
   email: { type: String, required: false },
   seller_email: { type: String, required: false },
   bit_title: { type: String, required: false },
-  price : { type : Number , require  : false },
-  transactionId: { type: String, required: false  },
-  date : { type: Date, default: Date.now },
-
-
-})
-
-
+  price: { type: Number, require: false },
+  transactionId: { type: String, required: false },
+  date: { type: Date, default: Date.now },
+});
 // Job post  Schema add by juwel
 const postJobSchema = new mongoose.Schema({
   job_title: { type: String, required: true },
@@ -193,17 +208,49 @@ const bitSchema = new mongoose.Schema({
   Buyer_email: { type: String, required: true },
 });
 
-
-
 // review and rating schema add by juwel
-const ratingSchema = new mongoose.Schema({
-  freelancerId: { type: String, required: false },
+// const ratingSchema = new mongoose.Schema({
+//   freelancerId: { type: String, required: false },
+//   clientId: { type: String, required: false },
+//   rating: { type: Number, required: true, min: 1, max: 5 },
+//   review: { type: String, required: true },
+//   createdAt: { type: Date, default: Date.now },
+// });
 
-  clientId: { type: String, required: false },
-  rating: { type: Number, required: true, min: 1, max: 5 },
-  review: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now },
+const ratingSchema = new mongoose.Schema({
+  freelancerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  clientId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true,
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5,
+  },
+  review: {
+    type: String,
+    required: true,
+    maxlength: 500,
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
+
+// Indexes to optimize queries on `freelancerId` and `clientId` fields
+ratingSchema.index({ freelancerId: 1 });
+ratingSchema.index({ clientId: 1 });
+
+// Optional: Compound index if you frequently query by both fields together
+ratingSchema.index({ freelancerId: 1, clientId: 1 });
 // Define the category schema
 const categorySchema = new mongoose.Schema({
   name: {
@@ -241,82 +288,82 @@ const skillSchema = new mongoose.Schema({
 });
 
 const freelancerSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true }, // Freelancer's email
-  categories: [skillSchema], // Array of categories and their skills
-  categories: [skillSchema],  // Array of categories and their skills   
+  email: { type: String, required: true, unique: true },
+  skills: { type: [String], default: [] },
 });
-// soket io message 
-const messageSchema = new mongoose.Schema({
-  sender: {
-    type: String,
-   
+// soket io message
+const messageSchema = new mongoose.Schema(
+  {
+    sender: {
+      type: String,
+    },
+    receiver: {
+      type: String,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
   },
-  receiver: {
-    type: String,
-    
-  },
-  message: {
-    type: String,
-    required: true,
-  },
-  
-},{
-  timestamps:true
-});
-
+  {
+    timestamps: true,
+  }
+);
 
 //  Mongoose model
 const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
-const Payment = mongoose.model( "Payment", paymentSchema )
-const Message = mongoose.model('Message', messageSchema);
+const Payment = mongoose.model("Payment", paymentSchema);
+const Message = mongoose.model("Message", messageSchema);
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
 const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
- const messageStore = mongoose.model('messageStore',messageStoreSchema)
+const messageStore = mongoose.model("messageStore", messageStoreSchema);
 // const Users = mongoose.model('Users', usersSchema);// Creating juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
 // Routes
 // message Store added mahamudur khan
-app.delete('/messageStore', async(req,res) =>{
-    const result = await messageStore.deleteMany()
-    res.send(result)
-})
-app.get('/messageStore', async(req,res)=>{
-   const result = await messageStore.find()
-   res.send(result)
-})
-app.get('/messageStore/:email', async(req,res)=>{
-  const email = req.params.email
+app.delete("/messageStore", async (req, res) => {
+  const result = await messageStore.deleteMany();
+  res.send(result);
+});
+app.get("/messageStore", async (req, res) => {
+  const result = await messageStore.find();
+  res.send(result);
+});
+app.get("/messageStore/:email", async (req, res) => {
+  const email = req.params.email;
   // console.log(email)
   try {
     const result = await messageStore.find({
-      $or:[{sender:email},{receiver: email}]
-    })
-   res.send(result)
+      $or: [{ sender: email }, { receiver: email }],
+    });
+    res.send(result);
   } catch (error) {
-    res.status(500).json({ message: 'Error sending message', error: err });
+    res.status(500).json({ message: "Error sending message", error: err });
   }
-   
-})
-app.post('/messageStore', async(req,res) =>{
-  const data = req.body
-  
-   const existMessageStored = await messageStore.findOne({sender:data.sender,receiver:data.receiver})
-   if(existMessageStored){
-     res.status(500).json({message:'already added'})
-   }
-   const result = await messageStore.create(data)
-   res.send(result)
-})
+});
+app.post("/messageStore", async (req, res) => {
+  const data = req.body;
+
+  const existMessageStored = await messageStore.findOne({
+    sender: data.sender,
+    receiver: data.receiver,
+  });
+  if (existMessageStored) {
+    res.status(500).json({ message: "already added" });
+  }
+  const result = await messageStore.create(data);
+  res.send(result);
+});
 // message  added mahamudur khan
-app.post('/api/messages', async (req, res) => {
+app.post("/api/messages", async (req, res) => {
   const { sender, receiver, message } = req.body;
   // console.log(message,sender,receiver)
   try {
@@ -324,30 +371,30 @@ app.post('/api/messages', async (req, res) => {
     await newMessage.save();
     res.status(201).json(newMessage);
   } catch (err) {
-    res.status(500).json({ message: 'Error sending message', error: err });
+    res.status(500).json({ message: "Error sending message", error: err });
   }
 });
-app.delete('/api/messages/clear', async (req, res) => {
-  const{sender,receiver}= req.body
+app.delete("/api/messages/clear", async (req, res) => {
+  const { sender, receiver } = req.body;
 
   try {
     await Message.deleteMany({
-      $or:[
-        {sender: sender, receiver: receiver},
-        {sender: receiver, receiver: sender},
-      ]
+      $or: [
+        { sender: sender, receiver: receiver },
+        { sender: receiver, receiver: sender },
+      ],
     });
-    res.status(200).send('Chat history cleared');
+    res.status(200).send("Chat history cleared");
   } catch (error) {
-    console.error('Failed to clear chat history:', error);
-    res.status(500).send('Server error');
+    console.error("Failed to clear chat history:", error);
+    res.status(500).send("Server error");
   }
 });
-app.get('/message', async(req,res) =>{
-  const result = await Message.find()
-  res.send(result)
-})
-app.get('/api/messages/:sender/:receiver', async (req, res) => {
+app.get("/message", async (req, res) => {
+  const result = await Message.find();
+  res.send(result);
+});
+app.get("/api/messages/:sender/:receiver", async (req, res) => {
   const { sender, receiver } = req.params;
 
   try {
@@ -360,8 +407,8 @@ app.get('/api/messages/:sender/:receiver', async (req, res) => {
 
     res.json(messages);
   } catch (error) {
-    console.error('Error fetching messages:', error);
-    res.status(500).send('Server error');
+    console.error("Error fetching messages:", error);
+    res.status(500).send("Server error");
   }
 });
 // jwt
@@ -391,17 +438,16 @@ app.get("/users", async (req, res) => {
   const users = await User.find();
   res.send(users);
 });
-// user get without login in user 
-app.get('/user/:email', async(req,res)=>{
-  const email = req.params.email
+// user get without login in user
+app.get("/user/:email", async (req, res) => {
+  const email = req.params.email;
   try {
-    const result = await User.find({email:{$ne: email}})
-    res.send(result)
+    const result = await User.find({ email: { $ne: email } });
+    res.send(result);
   } catch (error) {
-    res.status(500).send({message:"something wrong"})
-    
+    res.status(500).send({ message: "something wrong" });
   }
-})
+});
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
   const id = req.params.id;
   try {
@@ -441,21 +487,21 @@ app.patch("/userEdit", async (req, res) => {
     res.status(500).json({ message: "Error updating user", error });
   }
 });
-app.patch('/profileUpdate', async (req, res) => {
+app.patch("/profileUpdate", async (req, res) => {
   const { description, id } = req.body;
-  try { 
+  try {
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { description:description },
+      { description: description },
       { new: true }
     );
     if (!updatedUser) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: "User not found" });
     }
-    res.status(200).json({ message: 'User updated successfully', updatedUser });
+    res.status(200).json({ message: "User updated successfully", updatedUser });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Error updating user', error });
+    res.status(500).json({ message: "Error updating user", error });
   }
 });
 app.post("/users", async (req, res) => {
@@ -473,7 +519,7 @@ app.post("/users", async (req, res) => {
         photoURL,
         role,
       });
-      const result = await user.save(); 
+      const result = await user.save();
       res.send(result);
     } catch (error) {
       console.log(error);
@@ -537,6 +583,61 @@ app.get("/showgig/:email", async (req, res) => {
   }
 });
 
+app.get("/editGig/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: id };
+  try {
+    const result = await Gig.find(query);
+    res.send(result);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: "Error finding user" });
+  }
+});
+
+// Update gig by ID
+app.patch("/gig/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    gig_title,
+    gig_description,
+    min_price,
+    max_price,
+    gig_image,
+    category,
+    subcategory,
+    delivery_time, // New field for Delivery Time
+  } = req.body;
+  try {
+    // Find the gig by ID and update it
+    const updatedGig = await Gig.findByIdAndUpdate(
+      id,
+      {
+        gig_title,
+        gig_description,
+        min_price,
+        max_price,
+        gig_image,
+        category,
+        subcategory,
+        delivery_time, // Update Delivery Time here
+      },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedGig) {
+      return res.status(404).json({ message: "Gig not found" });
+    }
+
+    res
+      .status(200)
+      .json({ message: "Gig updated successfully", gig: updatedGig });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 // Create a new gig
 app.post("/creategigs", async (req, res) => {
   try {
@@ -551,6 +652,8 @@ app.post("/creategigs", async (req, res) => {
       seller_email,
       seller_image,
       seller_name,
+      freelancerId,
+      delivery_time,
     } = req.body;
     const gig = new Gig({
       gig_title,
@@ -563,6 +666,8 @@ app.post("/creategigs", async (req, res) => {
       seller_email,
       seller_image,
       seller_name,
+      freelancerId,
+      delivery_time,
     });
     const result = await gig.save();
     res.send(result);
@@ -666,44 +771,59 @@ app.get("/jobDetails/:id", async (req, res) => {
 });
 
 //add bu juwel
-// Update a job post by ID
-app.put('/jobPost/:id', async (req, res) => {
-  const { 
-      job_title, 
-      job_description, 
-      max_price, 
-      min_price, 
-      job_image, 
-      category, 
-      subcategory, 
-      applicationDeadline 
-  } = req.body;
-
+app.get("/review/:id", async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: id };
   try {
-      // Find the job post by ID
-      let jobPost = await PostJob.findById(req.params.id);
-      if (!jobPost) {
-          return res.status(404).json({ message: 'Job post not found' });
-      }
-
-      // Update the job post fields
-      jobPost.job_title = job_title;
-      jobPost.job_description = job_description;
-      jobPost.max_price = max_price;
-      jobPost.min_price = min_price;
-      jobPost.job_image = job_image;
-      jobPost.category = category;
-      jobPost.subcategory = subcategory;
-      jobPost.applicationDeadline = applicationDeadline;
-
-      // Save the updated job post
-      await jobPost.save();
-
-      res.json({ message: 'Job post updated successfully', jobPost });
+    const result = await PostJob.find(query);
+    res.send(result);
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error', error });
+    console.log(error);
+    res.status(500).send({ message: "Error finding user" });
   }
+});
+// Update a job post by ID
+app.patch("/jobPost/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    job_title,
+    job_description,
+    max_price,
+    min_price,
+    job_image,
+    category,
+    subcategory,
+    applicationDeadline,
+  } = req.body;
+console.log(req.body);
+try {
+  // Find the Post Job by ID and update it
+  const updatedPostJob = await PostJob.findByIdAndUpdate(
+    id,
+    {
+    job_title,
+    job_description,
+    max_price,
+    min_price,
+    job_image,
+    category,
+    subcategory,
+    applicationDeadline,
+    },
+    { new: true } // Return the updated document
+  );
+
+  if (!updatedPostJob) {
+    return res.status(404).json({ message: "PostJob not found" });
+  }
+
+  res
+    .status(200)
+    .json({ message: "Post Job updated successfully", PostJob : updatedPostJob });
+} catch (error) {
+  console.error(error);
+  res.status(500).json({ message: "Server error", error: error.message });
+}
 });
 //end of bu juwel
 
@@ -824,7 +944,7 @@ app.get("/showBitBuyer/email/:email", async (req, res) => {
 app.patch("/bitUpdate/:id", async (req, res) => {
   const { id } = req.params;
   const { action } = req.body;
-  console.log(action)
+  console.log(action);
 
   // Log the BitId and action to check values (Optional logging for debugging)
   // Validate the action to allow "approve", "reject", or "progress"
@@ -842,8 +962,6 @@ app.patch("/bitUpdate/:id", async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     return res.status(400).json({ error: "Invalid Bit ID" });
   }
-
-
 
   try {
     // Map the action to the corresponding status
@@ -892,46 +1010,45 @@ app.delete("/bit/:id", async (req, res) => {
 // add for payment dynamic bid amount
 app.get("/singleBids/:id", async (req, res) => {
   const id = req.params.id;
-    try {
-      const results = await Bit.findById(id);
-      res.status(200).json(results);
-    } catch (error) {
-      console.error("Error fetching bits:", error);
-      res.status(500).json({ error: "Failed to fetch bits" });
-    }
-  });
+  try {
+    const results = await Bit.findById(id);
+    res.status(200).json(results);
+  } catch (error) {
+    console.error("Error fetching bits:", error);
+    res.status(500).json({ error: "Failed to fetch bits" });
+  }
+});
 
-app.post('/create-payment-intent', async (req, res) => {
+app.post("/create-payment-intent", async (req, res) => {
   const { price } = req.body;
-  const amount = parseInt(price );
+  const amount = parseInt(price);
   // console.log(amount, 'amount inside the intent')
 
   const paymentIntent = await stripe.paymentIntents.create({
     amount: amount,
-    currency: 'usd',
-    payment_method_types: ['card']
+    currency: "usd",
+    payment_method_types: ["card"],
   });
 
   // console.log( {paymentIntent })
   res.send({
-    clientSecret: paymentIntent.client_secret
-  })
+    clientSecret: paymentIntent.client_secret,
+  });
 });
 
-  
 app.post("/payments", async (req, res) => {
-  const { name, email , seller_email ,bit_title , price , transactionId , date  } = req.body;
+  const { name, email, seller_email, bit_title, price, transactionId, date } =
+    req.body;
   // console.log( name , email )
   try {
-    const payment = new Payment ({
+    const payment = new Payment({
       name,
       email,
       seller_email,
       bit_title,
-      price, 
+      price,
       transactionId,
-      date 
-     
+      date,
     });
     const result = await payment.save();
     res.send(result);
@@ -939,7 +1056,6 @@ app.post("/payments", async (req, res) => {
     console.log(error);
     res.status(500).send({ message: "Error creating user" });
   }
-  
 });
 
 app.get("/payments", async (req, res) => {
@@ -953,8 +1069,8 @@ app.get("/payments", async (req, res) => {
 });
 // ge by buyer
 app.get("/payments/:email", async (req, res) => {
-  const email  = req.params.email;
- console.log(email)
+  const email = req.params.email;
+  console.log(email);
   const query = { email: email };
   try {
     const result = await Payment.find(query);
@@ -995,7 +1111,8 @@ app.post("/reviewRating", async (req, res) => {
     await newRating.save();
     res.status(201).json({ message: "Review submitted successfully!" });
   } catch (error) {
-    res.status(500).json({ message: "Error submitting review", error });
+    console.error("Error submitting review:", error);
+    res.status(500).json({ message: "Error submitting review" });
   }
 });
 
@@ -1146,63 +1263,73 @@ app.get("/api/freelancers", async (req, res) => {
 });
 
 // POST route to add skills
-app.post('/api/freelancers/skills', async (req, res) => {
+app.post("/api/freelancers/skills", async (req, res) => {
   const { email, skills } = req.body;
-
-  // Log the request body for debugging
   console.log(req.body);
-
-  // Validate input
   if (!email || !Array.isArray(skills)) {
-    return res.status(400).json({ message: 'Invalid data provided' });
+    return res.status(400).json({ message: "Invalid data provided" });
   }
 
   try {
-    // Find existing skills for the user
-    const existingSkills = await Freelancer.findOne({ email });
+    // Check if the freelancer already exists
+    const freelancer = await Freelancer.findOne({ email });
 
-    if (existingSkills) {
-      // If the user exists, check their existing skills
-      if (!existingSkills.skills) {
-        existingSkills.skills = []; // Ensure skills is initialized to an empty array
-      }
-
-      // Filter out the skills that already exist in the database
-      const newSkills = skills.filter(skill => 
-        !existingSkills.skills.includes(skill)
+    if (freelancer) {
+      // Prevent duplicate skills
+      const newSkills = skills.filter(
+        (skill) => !freelancer.skills.includes(skill)
       );
 
-      // If there are no new skills to add, return an error
       if (newSkills.length === 0) {
-        return res.status(400).json({ message: 'No new skills to add' });
+        return res.status(400).json({ message: "No new skills to add" });
       }
 
-      // Update the user's skills with new skills
-      existingSkills.skills.push(...newSkills);
-      await existingSkills.save();
+      // Add new skills and save
+      freelancer.skills.push(...newSkills);
+      await freelancer.save();
+      return res.status(201).json({ message: "Skills added successfully!" });
     } else {
-      // If no existing skills, create a new entry with an empty skills array
-      const newSkillsEntry = new Freelancer({ email, skills }); // skills will be saved as provided
-      await newSkillsEntry.save();
+      // Create a new freelancer if not found
+      const newFreelancer = new Freelancer({ email, skills });
+      await newFreelancer.save();
+      return res
+        .status(201)
+        .json({ message: "Freelancer created with skills!" });
+    }
+  } catch (error) {
+    console.error("Error adding skills:", error);
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "Freelancer with this email already exists" });
+    }
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.get("/api/skills/:email", async (req, res) => {
+  const { email } = req.params;
+
+  if (!email) {
+    return res.status(400).json({ message: "Email is required" });
+  }
+
+  try {
+    // Find the freelancer by email
+    const freelancer = await Freelancer.findOne({ email });
+
+    if (!freelancer) {
+      return res.status(404).json({ message: "Freelancer not found" });
     }
 
-    res.status(201).json({ message: 'Skills added successfully!' });
+    // Return the skills array of the freelancer
+    res.status(200).json({ skills: freelancer.skills });
   } catch (error) {
-    console.error('Error adding skills:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error("Error fetching skills:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 });
-app.get("/api/skills/:email", async (req, res) => {
-  const email = req.params.email;
-  const query = { email: email };
-  try {
-    const result = await Freelancer.find(query);
-    res.send(result);
-  } catch (error) {
-    console.log(error);
-    res.status(500).send({ message: "Error finding user" });
-  }
-});
+
 // API Endpoint: Get all gigs (with optional search and filter)
 app.get("/api/gigs", async (req, res) => {
   const { search = "", category = "" } = req.query;
@@ -1263,47 +1390,6 @@ app.patch("/api/users/:id", async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
-// User Registration
-app.post('/api/users', async (req, res) => {
-  const { name, email, password, photoURL, role } = req.body;
-
-  try {
-    // Check if the user already exists
-    const existingUser = await NewUser.findOne({ email });
-    if (existingUser) {
-      console.log('User already exists with email:', email);
-      return res.status(400).json({ message: 'User already exists' });
-    }
-
-    // Hash the password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create a new user
-    const newUser = new NewUser({
-      name,
-      email,
-      password: hashedPassword,
-      photoURL,
-      role,
-    });
-
-    // Save the user to the database
-    await newUser.save();
-    console.log('User created successfully:', newUser);
-    res.status(201).json({ message: 'User registered successfully' });
-
-  } catch (error) {
-    console.error('Error while registering user:', error);
-
-    // If the error is a MongoDB duplicate key error, respond appropriately
-    if (error.code === 11000) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    // For other errors, send a general server error
-    res.status(500).json({ message: 'Server error' });
-  }
-});
 // under basic server
 app.get("/", (req, res) => {
   res.send("ProLance is running");
@@ -1313,6 +1399,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`ProLance is running on port: ${port}`);
 });
-
-
-
