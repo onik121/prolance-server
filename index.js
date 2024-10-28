@@ -1,9 +1,9 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const http = require ('http')
+const http = require('http')
 const mongoose = require("mongoose");
-const {Server} = require('socket.io')
+const { Server } = require('socket.io')
 const app = express();
 const jwt = require("jsonwebtoken")
 
@@ -12,10 +12,10 @@ const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY)
 const port = process.env.PORT || 5000;
 // middleware
 const server = http.createServer(app)
-const io = new Server(server,{
-  cors:{
-    origin:"http://localhost:5173",
-    methods:["GET","POST","DELETE"]
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "DELETE"]
   }
 });
 const corsOptions = {
@@ -60,7 +60,7 @@ const gigSchema = new mongoose.Schema({
   gig_image: { type: String, required: true },
   seller_email: { type: String, required: true },
   created_at: { type: Date, default: Date.now },
-  seller_image: { type: String, required: true  },
+  seller_image: { type: String, required: true },
   seller_name: { type: String, required: true },
 });
 
@@ -72,18 +72,18 @@ const userSchema = new mongoose.Schema({
   photoURL: { type: String, required: true },
   password: { type: String },
   role: { type: String },
-  description:{type:String},
+  description: { type: String },
   password: { type: String, },
-  role: { type: String,  },
+  role: { type: String, },
 });
 // Message Store 
 const messageStoreSchema = new mongoose.Schema({
-  sender:{type: String, required:[true,"sender data need"]},
-  receiver:{type: String, required:[true,"receiver data needed"]},
-  receiverName:{ type: String, required:[true]},
-  senderName:{ type: String, required:[true]},
-},{
-  timestamps:true 
+  sender: { type: String, required: [true, "sender data need"] },
+  receiver: { type: String, required: [true, "receiver data needed"] },
+  receiverName: { type: String, required: [true] },
+  senderName: { type: String, required: [true] },
+}, {
+  timestamps: true
 })
 // Rating Schema 
 const ratingsSchema = new Schema({
@@ -91,7 +91,7 @@ const ratingsSchema = new Schema({
   reviewsCount: { type: Number, required: true, default: 0 },
   individualRatings: [
     {
-      rating: { type: Number, required: true, min: 1, max: 5 }, 
+      rating: { type: Number, required: true, min: 1, max: 5 },
       review: { type: String },
       reviewer: { type: Schema.Types.ObjectId, ref: 'Users' }, // Reference to reviewer (another user)
     }
@@ -132,7 +132,7 @@ const newUserSchema = new Schema(
     password: { type: String, required: true },
     photoURL: { type: String, required: true }, // Profile picture URL
     role: { type: String, default: 'user' }, // User role, default is 'user'
-    
+
     // Nested Schemas
     ratings: ratingsSchema, // Embeds rating schema
     skills: [skillsSchema], // Array of skills
@@ -151,9 +151,9 @@ const newUserSchema = new Schema(
 const paymentSchema = new mongoose.Schema({
   name: { type: String, required: false },
   email: { type: String, required: false },
-  price : { type : Number , require  : false },
-  transactionId: { type: String, required: false  },
-  date : { type: Date, default: Date.now },
+  price: { type: Number, require: false },
+  transactionId: { type: String, required: false },
+  date: { type: Date, default: Date.now },
 
 
 })
@@ -247,19 +247,19 @@ const freelancerSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   sender: {
     type: String,
-   
+
   },
   receiver: {
     type: String,
-    
+
   },
   message: {
     type: String,
     required: true,
   },
-  
-},{
-  timestamps:true
+
+}, {
+  timestamps: true
 });
 
 
@@ -268,7 +268,7 @@ const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
-const Payment = mongoose.model( "Payment", paymentSchema )
+const Payment = mongoose.model("Payment", paymentSchema)
 const Message = mongoose.model('Message', messageSchema);
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
@@ -276,7 +276,7 @@ const Qualification = mongoose.model("Qualification", qualificationSchema); // a
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
- const messageStore = mongoose.model('messageStore',messageStoreSchema)
+const messageStore = mongoose.model('messageStore', messageStoreSchema)
 // const Users = mongoose.model('Users', usersSchema);// Creating juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
@@ -284,36 +284,46 @@ const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
 
 // Routes
 // message Store added mahamudur khan
-app.delete('/messageStore', async(req,res) =>{
-    const result = await messageStore.deleteMany()
-    res.send(result)
+app.delete('/messageStore', async (req, res) => {
+  const result = await messageStore.deleteMany()
+  res.send(result)
 })
-app.get('/messageStore', async(req,res)=>{
-   const result = await messageStore.find()
-   res.send(result)
+app.get('/messageStore', async (req, res) => {
+  const result = await messageStore.find()
+  res.send(result)
 })
-app.get('/messageStore/:email', async(req,res)=>{
+app.get('/messageStore/:email', async (req, res) => {
   const email = req.params.email
   // console.log(email)
   try {
     const result = await messageStore.find({
-      $or:[{sender:email},{receiver: email}]
+      $or: [{ sender: email }, { receiver: email }]
     })
-   res.send(result)
+    // console.log(result)
+    res.send(result)
   } catch (error) {
     res.status(500).json({ message: 'Error sending message', error: err });
   }
-   
+
 })
-app.post('/messageStore', async(req,res) =>{
+app.post('/messageStore', async (req, res) => {
   const data = req.body
-  
-   const existMessageStored = await messageStore.findOne({sender:data.sender,receiver:data.receiver})
-   if(existMessageStored){
-     res.status(500).json({message:'already added'})
-   }
-   const result = await messageStore.create(data)
-   res.send(result)
+  try {
+    if (!data.sender || !data.receiver) {
+      return res.status(400).json({ message: 'Sender and receiver are required' });
+    }
+    const existMessageStored = await messageStore.findOne({ sender: data.sender, receiver: data.receiver })
+
+    if (existMessageStored) {
+     return res.status(500).json({ message: 'already added' })
+    }
+    const result = await messageStore.create(data)
+    return res.status(201).json(result)
+  } catch (error) {
+    console.log(error)
+   return res.status(500).json({ message: 'server error' })
+  }
+
 })
 // message  added mahamudur khan
 app.post('/api/messages', async (req, res) => {
@@ -328,13 +338,13 @@ app.post('/api/messages', async (req, res) => {
   }
 });
 app.delete('/api/messages/clear', async (req, res) => {
-  const{sender,receiver}= req.body
+  const { sender, receiver } = req.body
 
   try {
     await Message.deleteMany({
-      $or:[
-        {sender: sender, receiver: receiver},
-        {sender: receiver, receiver: sender},
+      $or: [
+        { sender: sender, receiver: receiver },
+        { sender: receiver, receiver: sender },
       ]
     });
     res.status(200).send('Chat history cleared');
@@ -343,7 +353,7 @@ app.delete('/api/messages/clear', async (req, res) => {
     res.status(500).send('Server error');
   }
 });
-app.get('/message', async(req,res) =>{
+app.get('/message', async (req, res) => {
   const result = await Message.find()
   res.send(result)
 })
@@ -392,14 +402,14 @@ app.get("/users", async (req, res) => {
   res.send(users);
 });
 // user get without login in user 
-app.get('/user/:email', async(req,res)=>{
+app.get('/user/:email', async (req, res) => {
   const email = req.params.email
   try {
-    const result = await User.find({email:{$ne: email}})
+    const result = await User.find({ email: { $ne: email } })
     res.send(result)
   } catch (error) {
-    res.status(500).send({message:"something wrong"})
-    
+    res.status(500).send({ message: "something wrong" })
+
   }
 })
 app.delete("/userDelete/:id", verifyToken, async (req, res) => {
@@ -443,10 +453,10 @@ app.patch("/userEdit", async (req, res) => {
 });
 app.patch('/profileUpdate', async (req, res) => {
   const { description, id } = req.body;
-  try { 
+  try {
     const updatedUser = await User.findByIdAndUpdate(
       id,
-      { description:description },
+      { description: description },
       { new: true }
     );
     if (!updatedUser) {
@@ -473,7 +483,7 @@ app.post("/users", async (req, res) => {
         photoURL,
         role,
       });
-      const result = await user.save(); 
+      const result = await user.save();
       res.send(result);
     } catch (error) {
       console.log(error);
@@ -679,41 +689,41 @@ app.get("/jobDetails/:id", async (req, res) => {
 //add bu juwel
 // Update a job post by ID
 app.put('/jobPost/:id', async (req, res) => {
-  const { 
-      job_title, 
-      job_description, 
-      max_price, 
-      min_price, 
-      job_image, 
-      category, 
-      subcategory, 
-      applicationDeadline 
+  const {
+    job_title,
+    job_description,
+    max_price,
+    min_price,
+    job_image,
+    category,
+    subcategory,
+    applicationDeadline
   } = req.body;
 
   try {
-      // Find the job post by ID
-      let jobPost = await PostJob.findById(req.params.id);
-      if (!jobPost) {
-          return res.status(404).json({ message: 'Job post not found' });
-      }
+    // Find the job post by ID
+    let jobPost = await PostJob.findById(req.params.id);
+    if (!jobPost) {
+      return res.status(404).json({ message: 'Job post not found' });
+    }
 
-      // Update the job post fields
-      jobPost.job_title = job_title;
-      jobPost.job_description = job_description;
-      jobPost.max_price = max_price;
-      jobPost.min_price = min_price;
-      jobPost.job_image = job_image;
-      jobPost.category = category;
-      jobPost.subcategory = subcategory;
-      jobPost.applicationDeadline = applicationDeadline;
+    // Update the job post fields
+    jobPost.job_title = job_title;
+    jobPost.job_description = job_description;
+    jobPost.max_price = max_price;
+    jobPost.min_price = min_price;
+    jobPost.job_image = job_image;
+    jobPost.category = category;
+    jobPost.subcategory = subcategory;
+    jobPost.applicationDeadline = applicationDeadline;
 
-      // Save the updated job post
-      await jobPost.save();
+    // Save the updated job post
+    await jobPost.save();
 
-      res.json({ message: 'Job post updated successfully', jobPost });
+    res.json({ message: 'Job post updated successfully', jobPost });
   } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error', error });
+    console.error(error);
+    res.status(500).json({ message: 'Server error', error });
   }
 });
 //end of bu juwel
@@ -862,10 +872,10 @@ app.patch("/bitUpdate/:id", async (req, res) => {
       action === "approve"
         ? "Approved"
         : action === "complete"
-        ? "Completed"
-        : action === "reject"
-        ? "Rejected"
-        : "In Progress";
+          ? "Completed"
+          : action === "reject"
+            ? "Rejected"
+            : "In Progress";
 
     // Update the document's status based on the action
     const updatedBit = await Bit.findByIdAndUpdate(
@@ -902,7 +912,7 @@ app.delete("/bit/:id", async (req, res) => {
 
 app.post('/create-payment-intent', async (req, res) => {
   const { price } = req.body;
-  const amount = parseInt(price );
+  const amount = parseInt(price);
   // console.log(amount, 'amount inside the intent')
 
   const paymentIntent = await stripe.paymentIntents.create({
@@ -917,18 +927,18 @@ app.post('/create-payment-intent', async (req, res) => {
   })
 });
 
-  
+
 app.post("/payments", async (req, res) => {
-  const { name, email ,price , transactionId , date  } = req.body;
+  const { name, email, price, transactionId, date } = req.body;
   // console.log( name , email )
   try {
-    const payment = new Payment ({
+    const payment = new Payment({
       name,
       email,
-      price, 
+      price,
       transactionId,
-      date 
-     
+      date
+
     });
     const result = await payment.save();
     res.send(result);
@@ -936,7 +946,7 @@ app.post("/payments", async (req, res) => {
     console.log(error);
     res.status(500).send({ message: "Error creating user" });
   }
-  
+
 });
 
 
