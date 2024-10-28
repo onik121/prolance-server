@@ -10,12 +10,12 @@ const { Schema } = mongoose;
 const stripe = require("stripe")(process.env.STRIPE_SERVER_KEY);
 const port = process.env.PORT || 5000;
 // middleware
-const server = http.createServer(app);
+const server = http.createServer(app)
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST", "DELETE"],
-  },
+    origin: ["http://localhost:5173","https://prolance-482df.web.app"],
+    methods: ["GET", "POST", "DELETE"]
+  }
 });
 const corsOptions = {
   origin: [
@@ -74,22 +74,19 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   role: { type: String },
   description: { type: String },
-  password: { type: String },
-  role: { type: String },
+  password: { type: String, },
+  role: { type: String, },
 });
-// Message Store
-const messageStoreSchema = new mongoose.Schema(
-  {
-    sender: { type: String, required: [true, "sender data need"] },
-    receiver: { type: String, required: [true, "receiver data needed"] },
-    receiverName: { type: String, required: [true] },
-    senderName: { type: String, required: [true] },
-  },
-  {
-    timestamps: true,
-  }
-);
-// Rating Schema
+// Message Store 
+const messageStoreSchema = new mongoose.Schema({
+  sender: { type: String, required: [true, "sender data need"] },
+  receiver: { type: String, required: [true, "receiver data needed"] },
+  receiverName: { type: String, required: [true] },
+  senderName: { type: String, required: [true] },
+}, {
+  timestamps: true
+})
+// Rating Schema 
 const ratingsSchema = new Schema({
   averageRating: { type: Number, required: true, min: 0, max: 5 }, // Rating should be between 0 and 5
   reviewsCount: { type: Number, required: true, default: 0 },
@@ -153,7 +150,7 @@ const newUserSchema = new Schema(
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     photoURL: { type: String, required: true }, // Profile picture URL
-    role: { type: String, default: "user" }, // User role, default is 'user'
+    role: { type: String, default: 'user' }, // User role, default is 'user'
 
     // Nested Schemas
     ratings: ratingsSchema, // Embeds rating schema
@@ -291,6 +288,7 @@ const freelancerSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   skills: { type: [String], default: [] },
 });
+
 // soket io message
 const messageSchema = new mongoose.Schema(
   {
@@ -315,53 +313,62 @@ const Gig = mongoose.model("Gig", gigSchema);
 const User = mongoose.model("User", userSchema);
 const PostJob = mongoose.model("PostJob", postJobSchema); // add by juwel
 const Bit = mongoose.model("Bit", bitSchema); // add  by juwel
-const Payment = mongoose.model("Payment", paymentSchema);
-const Message = mongoose.model("Message", messageSchema);
+const Payment = mongoose.model("Payment", paymentSchema)
+const Message = mongoose.model('Message', messageSchema);
+
 const Rating = mongoose.model("Rating", ratingSchema); // add by juwel
 const Category = mongoose.model("Category", categorySchema); // add by juwel
 const Qualification = mongoose.model("Qualification", qualificationSchema); // add by juwel
 const Language = mongoose.model("Language", languageSchema); // add by juwel
 const Freelancer = mongoose.model("Freelancer", freelancerSchema); // add by juwel
 const NewUser = mongoose.model("NewUser", newUserSchema); // add by juwel
-const messageStore = mongoose.model("messageStore", messageStoreSchema);
+const messageStore = mongoose.model('messageStore', messageStoreSchema)
 // const Users = mongoose.model('Users', usersSchema);// Creating juwel
 //const Users = mongoose.model('Users', usersSchema);// Creating juwel
 
 // Routes
 // message Store added mahamudur khan
-app.delete("/messageStore", async (req, res) => {
-  const result = await messageStore.deleteMany();
-  res.send(result);
-});
-app.get("/messageStore", async (req, res) => {
-  const result = await messageStore.find();
-  res.send(result);
-});
-app.get("/messageStore/:email", async (req, res) => {
-  const email = req.params.email;
+app.delete('/messageStore', async (req, res) => {
+  const result = await messageStore.deleteMany()
+  res.send(result)
+})
+app.get('/messageStore', async (req, res) => {
+  const result = await messageStore.find()
+  res.send(result)
+})
+app.get('/messageStore/:email', async (req, res) => {
+  const email = req.params.email
   // console.log(email)
   try {
     const result = await messageStore.find({
-      $or: [{ sender: email }, { receiver: email }],
-    });
-    res.send(result);
+      $or: [{ sender: email }, { receiver: email }]
+    })
+    // console.log(result)
+    res.send(result)
   } catch (error) {
     res.status(500).json({ message: "Error sending message", error: err });
   }
-});
-app.post("/messageStore", async (req, res) => {
-  const data = req.body;
 
-  const existMessageStored = await messageStore.findOne({
-    sender: data.sender,
-    receiver: data.receiver,
-  });
-  if (existMessageStored) {
-    res.status(500).json({ message: "already added" });
+})
+app.post('/messageStore', async (req, res) => {
+  const data = req.body
+  try {
+    if (!data.sender || !data.receiver) {
+      return res.status(400).json({ message: 'Sender and receiver are required' });
+    }
+    const existMessageStored = await messageStore.findOne({ sender: data.sender, receiver: data.receiver })
+
+    if (existMessageStored) {
+     return res.status(500).json({ message: 'already added' })
+    }
+    const result = await messageStore.create(data)
+    return res.status(201).json(result)
+  } catch (error) {
+    console.log(error)
+   return res.status(500).json({ message: 'server error' })
   }
-  const result = await messageStore.create(data);
-  res.send(result);
-});
+
+})
 // message  added mahamudur khan
 app.post("/api/messages", async (req, res) => {
   const { sender, receiver, message } = req.body;
@@ -374,15 +381,15 @@ app.post("/api/messages", async (req, res) => {
     res.status(500).json({ message: "Error sending message", error: err });
   }
 });
-app.delete("/api/messages/clear", async (req, res) => {
-  const { sender, receiver } = req.body;
+app.delete('/api/messages/clear', async (req, res) => {
+  const { sender, receiver } = req.body
 
   try {
     await Message.deleteMany({
       $or: [
         { sender: sender, receiver: receiver },
         { sender: receiver, receiver: sender },
-      ],
+      ]
     });
     res.status(200).send("Chat history cleared");
   } catch (error) {
@@ -390,11 +397,11 @@ app.delete("/api/messages/clear", async (req, res) => {
     res.status(500).send("Server error");
   }
 });
-app.get("/message", async (req, res) => {
-  const result = await Message.find();
-  res.send(result);
-});
-app.get("/api/messages/:sender/:receiver", async (req, res) => {
+app.get('/message', async (req, res) => {
+  const result = await Message.find()
+  res.send(result)
+})
+app.get('/api/messages/:sender/:receiver', async (req, res) => {
   const { sender, receiver } = req.params;
 
   try {
@@ -969,10 +976,10 @@ app.patch("/bitUpdate/:id", async (req, res) => {
       action === "approve"
         ? "Approved"
         : action === "complete"
-        ? "Completed"
-        : action === "reject"
-        ? "Rejected"
-        : "In Progress";
+          ? "Completed"
+          : action === "reject"
+            ? "Rejected"
+            : "In Progress";
 
     // Update the document's status based on the action
     const updatedBit = await Bit.findByIdAndUpdate(
