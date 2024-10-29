@@ -74,6 +74,10 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   role: { type: String },
   description: { type: String },
+  skills : { type: [String], },
+  education : { type: [String], },
+  languages: { type: [String] },
+
   password: { type: String, },
   role: { type: String, },
 });
@@ -495,11 +499,11 @@ app.patch("/userEdit", async (req, res) => {
   }
 });
 app.patch("/profileUpdate", async (req, res) => {
-  const { description, id } = req.body;
+  const data = req.body;
   try {
     const updatedUser = await User.findByIdAndUpdate(
-      id,
-      { description: description },
+      data.id,
+      { ...data },
       { new: true }
     );
     if (!updatedUser) {
